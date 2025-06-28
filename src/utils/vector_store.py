@@ -432,19 +432,78 @@ class VectorStoreManager:
             return {"status": "❌ 벡터 스토어가 생성되지 않았습니다."}
             
         try:
-            # Get collection info from ChromaDB
-            collection = self._vector_store._collection
-            count = collection.count()
-            
+            if self.vector_store_type == "chroma":
+                # ChromaDB specific stats
+                collection = self._vector_store._collection
+                count = collection.count()
+                
+                return {
+                    "collection_name": self.collection_name,
+                    "document_count": count,
+                    "status": "✅ 활성화됨",
+                    "embedding_dimension": "unknown",
+                    "telemetry_status": "✅ 완전 비활성화"
+                }
+                
+            elif self.vector_store_type == "faiss":
+                # FAISS specific stats
+                try:
+                    # First, try to get from metadata (most reliable)
+                    metadata_count = self._metadata.get('document_count')
+                    
+                    if metadata_count is not None:
+                        doc_count = metadata_count
+                        status = "✅ 활성화됨"
+                    else:
+                        # Fallback: try to get from FAISS index
+                        if hasattr(self._vector_store, 'index') and self._vector_store.index:
+                            index_size = self._vector_store.index.ntotal
+                            doc_count = f"{index_size} 벡터"
+                            status = "✅ 활성화됨 (인덱스 기반)"
+                        else:
+                            # Last resort: test with similarity search
+                            try:
+                                test_docs = self._vector_store.similarity_search("test", k=1)
+                                doc_count = "활성" if test_docs else "비어있음"
+                                status = "✅ 활성화됨 (검색 테스트)"
+                            except:
+                                doc_count = "N/A"
+                                status = "⚠️ 상태 확인 불가"
+                    
+                    return {
+                        "collection_name": self.collection_name,
+                        "document_count": doc_count,
+                        "status": status,
+                        "embedding_dimension": "unknown",
+                        "telemetry_status": "N/A (FAISS)"
+                    }
+                    
+                except Exception as faiss_error:
+                    # Complete fallback
+                    return {
+                        "collection_name": self.collection_name,
+                        "document_count": self._metadata.get('document_count', 'N/A'),
+                        "status": f"⚠️ FAISS 오류: {str(faiss_error)[:50]}",
+                        "embedding_dimension": "unknown",
+                        "telemetry_status": "N/A (FAISS)"
+                    }
+            else:
+                return {
+                    "collection_name": self.collection_name,
+                    "document_count": "N/A",
+                    "status": f"⚠️ 알 수 없는 타입: {self.vector_store_type}",
+                    "embedding_dimension": "unknown",
+                    "telemetry_status": "N/A"
+                }
+                
+        except Exception as e:
             return {
                 "collection_name": self.collection_name,
-                "document_count": count,
-                "status": "✅ 활성화됨",
-                "embedding_dimension": "unknown",  # ChromaDB doesn't expose this easily
-                "telemetry_status": "✅ 완전 비활성화"
+                "document_count": self._metadata.get('document_count', 'N/A'),
+                "status": f"❌ 통계 조회 실패: {str(e)}",
+                "embedding_dimension": "unknown",
+                "telemetry_status": "N/A"
             }
-        except Exception as e:
-            return {"status": f"❌ 통계 조회 실패: {str(e)}"}
     
     def cleanup(self) -> None:
         """Clean up temporary resources."""
