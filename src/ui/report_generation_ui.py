@@ -132,6 +132,7 @@ class ReportGenerationUI:
                 "target_length": "medium",
                 "include_visuals": False,
                 "citation_style": "simple",
+                "enable_streaming": True,
                 "outline": []
             }
         
@@ -215,6 +216,12 @@ class ReportGenerationUI:
                     help="차트, 그래프 등을 위한 플레이스홀더를 추가합니다."
                 )
                 
+                enable_streaming = st.checkbox(
+                    "실시간 스트리밍 표시",
+                    value=st.session_state.report_config["enable_streaming"],
+                    help="보고서 생성 과정을 실시간으로 표시합니다."
+                )
+                
                 citation_style = st.selectbox(
                     "인용 스타일:",
                     options=["simple", "detailed", "none"],
@@ -233,6 +240,7 @@ class ReportGenerationUI:
                     "language": language,
                     "target_length": length_options[length_option],
                     "include_visuals": include_visuals,
+                    "enable_streaming": enable_streaming,
                     "citation_style": citation_style
                 })
                 
@@ -349,6 +357,7 @@ class ReportGenerationUI:
                 st.write(f"**언어:** {config['language']}")
                 st.write(f"**분량:** {length_map.get(config['target_length'], 'N/A')}")
                 st.write(f"**시각 요소:** {'포함' if config['include_visuals'] else '미포함'}")
+                st.write(f"**실시간 스트리밍:** {'활성화' if config.get('enable_streaming', True) else '비활성화'}")
                 st.write(f"**인용 스타일:** {citation_map.get(config['citation_style'], 'N/A')}")
             
             st.write(f"**목차 구성:** {len(config.get('outline', []))}개 섹션")
@@ -395,14 +404,28 @@ class ReportGenerationUI:
             
             report_rag = ReportGenerationRAG(vector_store_manager, llm_manager)
             
-            # Generate report
-            report_content = report_rag.generate_report(config)
+            # Create streaming container for live updates if enabled
+            streaming_container = None
+            if config.get('enable_streaming', True):
+                streaming_container = st.container()
             
-            # Display generated report
+            # Generate report with or without streaming
+            report_content = report_rag.generate_report(config, streaming_container=streaming_container)
+            
+            # Display completion message
             st.success("✅ 보고서 생성 완료!")
             
-            # Show report preview
-            with st.expander("📖 보고서 미리보기", expanded=True):
+            # Add some space before final preview
+            st.markdown("---")
+            
+            # Show final report preview
+            if config.get('enable_streaming', True):
+                # If streaming was enabled, show collapsed preview since user already saw the content
+                with st.expander("📖 완성된 보고서 전문", expanded=False):
+                    st.markdown(report_content)
+            else:
+                # If streaming was disabled, show expanded preview
+                st.subheader("📖 생성된 보고서")
                 st.markdown(report_content)
             
             # Download options

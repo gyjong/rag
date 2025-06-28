@@ -74,7 +74,8 @@ class ReportGenerationRAG:
             return []
     
     def generate_report_section(self, section_title: str, section_content_guide: str, 
-                              context_docs: List[Document], report_config: Dict[str, Any]) -> str:
+                              context_docs: List[Document], report_config: Dict[str, Any], 
+                              streaming_container=None) -> str:
         """Generate a specific section of the report.
         
         Args:
@@ -82,6 +83,7 @@ class ReportGenerationRAG:
             section_content_guide: Guide for what to include in this section
             context_docs: Relevant documents for this section
             report_config: Configuration for the report
+            streaming_container: Streamlit container for live updates
             
         Returns:
             Generated section content in markdown format
@@ -130,25 +132,52 @@ class ReportGenerationRAG:
 섹션 내용만 작성하고, 추가 설명은 하지 마세요."""
 
         try:
-            # Generate section content
+            # Generate section content with streaming
             section_content = ""
-            for chunk in self.llm_manager.generate_response_stream(
-                prompt=prompt,
-                context=""  # Context is already included in prompt
-            ):
-                section_content += chunk
+            
+            if streaming_container:
+                # Show section header immediately
+                with streaming_container:
+                    st.markdown(f"### 🔄 생성 중: {section_title}")
+                    section_placeholder = st.empty()
+                    
+                # Stream the content
+                for chunk in self.llm_manager.generate_response_stream(
+                    prompt=prompt,
+                    context=""  # Context is already included in prompt
+                ):
+                    section_content += chunk
+                    # Update the display in real-time with a small delay for smoother experience
+                    if len(section_content) % 50 == 0:  # Update every 50 characters
+                        with section_placeholder.container():
+                            st.markdown(section_content + "▌")  # Add cursor
+                            time.sleep(0.1)  # Small delay for better UX
+                
+                # Final update without cursor
+                with section_placeholder.container():
+                    st.markdown(section_content)
+                    
+            else:
+                # Non-streaming fallback
+                for chunk in self.llm_manager.generate_response_stream(
+                    prompt=prompt,
+                    context=""
+                ):
+                    section_content += chunk
             
             return section_content.strip()
             
         except Exception as e:
-            st.error(f"섹션 '{section_title}' 생성 실패: {str(e)}")
+            error_msg = f"섹션 '{section_title}' 생성 실패: {str(e)}"
+            st.error(error_msg)
             return f"## {section_title}\n\n섹션 생성 중 오류가 발생했습니다."
     
-    def generate_report(self, report_config: Dict[str, Any]) -> str:
+    def generate_report(self, report_config: Dict[str, Any], streaming_container=None) -> str:
         """Generate a complete report based on configuration.
         
         Args:
             report_config: Configuration dictionary containing report parameters
+            streaming_container: Streamlit container for live streaming display
             
         Returns:
             Generated report in markdown format
@@ -166,9 +195,25 @@ class ReportGenerationRAG:
         include_visuals = report_config.get('include_visuals', False)
         citation_style = report_config.get('citation_style', 'simple')
         
-        st.subheader("📊 보고서 생성 진행 상황")
-        progress_bar = st.progress(0)
-        status_text = st.empty()
+        # Create containers for different parts of the UI
+        progress_container = st.container()
+        
+        if streaming_container:
+            # Separate containers for progress and streaming content
+            with progress_container:
+                st.subheader("📊 보고서 생성 진행 상황")
+                progress_bar = st.progress(0)
+                status_text = st.empty()
+            
+            # Live report display container
+            with streaming_container:
+                st.subheader("📝 실시간 보고서 생성")
+                live_report_container = st.container()
+        else:
+            st.subheader("📊 보고서 생성 진행 상황")
+            progress_bar = st.progress(0)
+            status_text = st.empty()
+            live_report_container = None
         
         # Step 1: Retrieve relevant documents for the main topic
         status_text.text("1. 주제 관련 문서 검색 중...")
@@ -185,6 +230,12 @@ class ReportGenerationRAG:
         
         report_content = self._generate_report_header(report_config)
         
+        # Display header immediately if streaming
+        if live_report_container:
+            with live_report_container:
+                st.markdown(report_content)
+                st.markdown("---")
+        
         # Step 3: Generate each section
         total_sections = len(outline)
         if total_sections == 0:
@@ -195,7 +246,7 @@ class ReportGenerationRAG:
             section_title = section_info.get('title', f'섹션 {i+1}')
             section_guide = section_info.get('content_guide', '이 섹션의 내용을 작성하세요.')
             
-            status_text.text(f"3. 섹션 생성 중: {section_title}")
+            status_text.text(f"3. 섹션 생성 중: {section_title} ({i+1}/{total_sections})")
             progress = 20 + (i + 1) * 60 // total_sections
             progress_bar.progress(progress)
             
@@ -206,24 +257,49 @@ class ReportGenerationRAG:
             if not section_docs:
                 section_docs = main_docs[:5]
             
-            # Generate section content
+            # Create section-specific streaming container
+            section_streaming_container = None
+            if live_report_container:
+                section_streaming_container = live_report_container.container()
+            
+            # Generate section content with streaming
             section_content = self.generate_report_section(
-                section_title, section_guide, section_docs, report_config
+                section_title, section_guide, section_docs, report_config,
+                streaming_container=section_streaming_container
             )
             
             report_content += "\n\n" + section_content
+            
+            # Add separator between sections
+            if live_report_container:
+                with live_report_container:
+                    st.markdown("---")
         
         # Step 4: Generate conclusion and references
         status_text.text("4. 결론 및 참고자료 생성 중...")
         progress_bar.progress(90)
         
-        conclusion = self._generate_conclusion(topic, purpose, main_docs, report_config)
+        # Generate conclusion with streaming
+        conclusion_container = None
+        if live_report_container:
+            conclusion_container = live_report_container.container()
+        
+        conclusion = self._generate_conclusion(
+            topic, purpose, main_docs, report_config, 
+            streaming_container=conclusion_container
+        )
         report_content += "\n\n" + conclusion
         
         # Add references if requested
         if citation_style != 'none':
             references = self._generate_references(main_docs, citation_style)
             report_content += "\n\n" + references
+            
+            # Display references immediately if streaming
+            if live_report_container:
+                with live_report_container:
+                    st.markdown("---")
+                    st.markdown(references)
         
         # Step 5: Final formatting
         status_text.text("5. 최종 포맷팅 중...")
@@ -234,7 +310,7 @@ class ReportGenerationRAG:
             report_content = self._add_visual_placeholders(report_content)
         
         total_time = time.time() - start_time
-        status_text.text(f"보고서 생성 완료! (소요 시간: {total_time:.1f}초)")
+        status_text.text(f"✅ 보고서 생성 완료! (소요 시간: {total_time:.1f}초)")
         
         return report_content
     
@@ -263,7 +339,7 @@ class ReportGenerationRAG:
         return header
     
     def _generate_conclusion(self, topic: str, purpose: str, context_docs: List[Document], 
-                           report_config: Dict[str, Any]) -> str:
+                           report_config: Dict[str, Any], streaming_container=None) -> str:
         """Generate conclusion section."""
         context = "\n\n".join([doc.page_content for doc in context_docs[:5]])
         max_context_length = 3000
@@ -302,16 +378,42 @@ class ReportGenerationRAG:
         
         try:
             conclusion = ""
-            for chunk in self.llm_manager.generate_response_stream(
-                prompt=prompt,
-                context=""
-            ):
-                conclusion += chunk
+            
+            if streaming_container:
+                # Show conclusion header immediately
+                with streaming_container:
+                    st.markdown("### 🔄 생성 중: 결론")
+                    conclusion_placeholder = st.empty()
+                    
+                # Stream the content
+                for chunk in self.llm_manager.generate_response_stream(
+                    prompt=prompt,
+                    context=""
+                ):
+                    conclusion += chunk
+                    # Update the display in real-time with a small delay for smoother experience
+                    if len(conclusion) % 50 == 0:  # Update every 50 characters
+                        with conclusion_placeholder.container():
+                            st.markdown(conclusion + "▌")  # Add cursor
+                            time.sleep(0.1)  # Small delay for better UX
+                
+                # Final update without cursor
+                with conclusion_placeholder.container():
+                    st.markdown(conclusion)
+                    
+            else:
+                # Non-streaming fallback
+                for chunk in self.llm_manager.generate_response_stream(
+                    prompt=prompt,
+                    context=""
+                ):
+                    conclusion += chunk
             
             return conclusion.strip()
             
         except Exception as e:
-            st.error(f"결론 생성 실패: {str(e)}")
+            error_msg = f"결론 생성 실패: {str(e)}"
+            st.error(error_msg)
             return "## 결론\n\n결론 생성 중 오류가 발생했습니다."
     
     def _generate_references(self, docs: List[Document], citation_style: str) -> str:
