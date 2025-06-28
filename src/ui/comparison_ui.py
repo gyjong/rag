@@ -12,6 +12,43 @@ class ComparisonUI:
     """UI components for comparing RAG systems."""
     
     @staticmethod
+    def display_comparison_tab():
+        """Comparison and analysis tab."""
+        st.header("📊 결과 비교 및 분석")
+        
+        if not st.session_state.experiment_results:
+            st.warning("먼저 RAG 실험을 실행해주세요.")
+            return
+        
+        results = st.session_state.experiment_results
+        
+        # System information comparison
+        if st.session_state.rag_systems:
+            systems_info = []
+            for system_name, rag_system in st.session_state.rag_systems.items():
+                systems_info.append(rag_system.get_system_info())
+            
+            ComparisonUI.display_system_comparison(systems_info)
+            st.divider()
+        
+        # Performance comparison
+        ComparisonUI.display_performance_comparison(results)
+        st.divider()
+        
+        # Answer comparison
+        ComparisonUI.display_answer_comparison(results)
+        st.divider()
+        
+        # Detailed metrics for each system
+        for result in results:
+            ComparisonUI.display_detailed_metrics(result)
+            ComparisonUI.create_processing_flow_diagram(result["rag_type"])
+            st.divider()
+        
+        # Summary report
+        ComparisonUI.create_summary_report(results)
+    
+    @staticmethod
     def display_system_comparison(systems_info: List[Dict[str, Any]]):
         """Display comparison of RAG systems."""
         st.subheader("🔍 RAG 시스템 비교")
