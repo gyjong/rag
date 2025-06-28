@@ -126,6 +126,10 @@ class VectorStoreUI:
             st.session_state.embedding_manager = embedding_manager
             st.session_state.vector_store_created = True
             
+            # Store vector store metadata in session state for consistency
+            st.session_state.vector_store_metadata = getattr(vector_store_manager, '_metadata', {})
+            st.session_state.vector_store_source = 'created'
+            
             # Display collection stats
             stats = vector_store_manager.get_collection_stats()
             st.write("### 📊 벡터 스토어 통계")
@@ -289,6 +293,10 @@ class VectorStoreUI:
                 st.session_state.embedding_manager = embedding_manager
                 st.session_state.vector_store_created = True
                 
+                # Store vector store metadata in session state for consistency
+                st.session_state.vector_store_metadata = getattr(vector_store_manager, '_metadata', {})
+                st.session_state.vector_store_source = 'loaded'  # Track source
+                
                 # Show loaded stats and search test
                 VectorStoreUI._display_loading_success(vector_store_manager)
                 
@@ -394,6 +402,11 @@ class VectorStoreUI:
                         st.session_state.vector_store_manager = vector_store_manager
                         st.session_state.embedding_manager = embedding_manager
                         st.session_state.vector_store_created = True
+                        
+                        # Store vector store metadata in session state for consistency
+                        st.session_state.vector_store_metadata = getattr(vector_store_manager, '_metadata', {})
+                        st.session_state.vector_store_source = 'manual_loaded'
+                        
                         st.balloons()
                         
                 except Exception as e:

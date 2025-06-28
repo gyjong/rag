@@ -73,6 +73,7 @@ class VectorStoreManager:
         self._vector_store = None
         self._temp_dir = None
         self._persist_directory = None
+        self._metadata = {}
         
     def create_vector_store(self, documents: List[Document]) -> VectorStore:
         """Create a vector store from documents.
@@ -94,6 +95,15 @@ class VectorStoreManager:
                     self._vector_store = self._create_faiss_store(documents)
                 else:
                     raise ValueError(f"지원하지 않는 벡터 스토어 타입: {self.vector_store_type}")
+                
+                # Set basic metadata when creating vector store
+                self._metadata = {
+                    "created_at": datetime.now().isoformat(),
+                    "vector_store_type": self.vector_store_type,
+                    "collection_name": self.collection_name,
+                    "document_count": len(documents),
+                    "store_name": f"vectorstore_{self.vector_store_type}_{datetime.now().strftime('%Y%m%d_%H%M')}"
+                }
                 
                 st.success(f"✅ 벡터 스토어가 성공적으로 생성되었습니다. ({len(documents)}개 문서 인덱싱)")
                 
@@ -192,6 +202,9 @@ class VectorStoreManager:
             with open(metadata_path, 'w', encoding='utf-8') as f:
                 json.dump(save_metadata, f, ensure_ascii=False, indent=2)
             
+            # Store metadata for later access
+            self._metadata = save_metadata
+            
             st.success(f"✅ 벡터 스토어가 저장되었습니다: {save_path}")
             return True
             
@@ -269,6 +282,9 @@ class VectorStoreManager:
             # Update instance variables
             self.vector_store_type = vector_store_type
             self.collection_name = collection_name
+            
+            # Store metadata for later access
+            self._metadata = metadata
             
             st.success(f"✅ 벡터 스토어가 로딩되었습니다: {load_path}")
             return True

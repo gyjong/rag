@@ -60,18 +60,134 @@ class RAGExperimentUI:
     
     @staticmethod
     def _display_vector_store_status(vector_store):
-        """Display current vector store status."""
-        with st.expander("📊 현재 벡터 스토어 정보"):
+        """Display current vector store status with detailed information."""
+        with st.expander("📊 현재 벡터 스토어 정보", expanded=True):
             try:
-                # Get sample documents to check vector store
-                sample_docs = vector_store.similarity_search("test", k=1)
-                if sample_docs:
-                    st.info(f"📄 로드된 문서 수: 추정 {len(sample_docs)} 개 이상")
-                    st.write(f"**샘플 문서 출처:** {sample_docs[0].metadata.get('source', 'Unknown')}")
+                # Get vector store manager from session state
+                vector_store_manager = st.session_state.get("vector_store_manager")
+                
+                if vector_store_manager:
+                    # Get collection stats
+                    stats = vector_store_manager.get_collection_stats()
+                    
+                    # Get vector store metadata from both sources
+                    manager_metadata = getattr(vector_store_manager, '_metadata', {})
+                    session_metadata = st.session_state.get('vector_store_metadata', {})
+                    
+                    # Merge metadata (session state takes precedence for newer info)
+                    metadata = {**manager_metadata, **session_metadata}
+                    
+                    # Display basic stats in columns
+                    col1, col2, col3, col4, col5 = st.columns(5)
+                    
+                    with col1:
+                        doc_count = stats.get("document_count", metadata.get("document_count", "N/A"))
+                        st.metric("📄 문서 수", doc_count)
+                    
+                    with col2:
+                        vs_type = getattr(vector_store_manager, 'vector_store_type', 'Unknown')
+                        st.metric("🔧 벡터 스토어 타입", vs_type.upper())
+                    
+                    with col3:
+                        collection_name = getattr(vector_store_manager, 'collection_name', 'N/A')
+                        st.metric("🗂️ 컬렉션", collection_name)
+                    
+                    with col4:
+                        source = st.session_state.get('vector_store_source', 'unknown')
+                        source_emoji = {"created": "🆕", "loaded": "📥", "manual_loaded": "🔧", "auto_created": "⚙️"}.get(source, "❓")
+                        st.metric("📍 출처", f"{source_emoji} {source}")
+                    
+                    with col5:
+                        telemetry_status = stats.get("telemetry_status", "비활성화")
+                        st.metric("🚫 텔레메트리", telemetry_status)
+                    
+                    # Detailed information table
+                    st.write("### 📋 상세 정보")
+                    
+                    # Check if we have stored metadata from vector store creation/loading
+                    vector_store_info = []
+                    
+                    # Try to get metadata from different sources
+                    if metadata:
+                        # From stored metadata
+                        vector_store_info.extend([
+                            ("📅 생성 시간", metadata.get('created_at', 'N/A')),
+                            ("🏷️ 저장 이름", metadata.get('store_name', 'N/A')),
+                            ("📊 총 문자 수", f"{metadata.get('total_characters', 0):,}"),
+                            ("📚 소스 파일 수", metadata.get('source_count', 'N/A')),
+                            ("📏 평균 청크 크기", f"{metadata.get('avg_chunk_size', 0):.0f}"),
+                            ("🤖 임베딩 모델", metadata.get('embedding_model', 'N/A')),
+                            ("🔪 청크 크기", metadata.get('chunk_size', 'N/A')),
+                            ("🔗 청크 오버랩", metadata.get('chunk_overlap', 'N/A'))
+                        ])
+                    else:
+                        # Basic information when no metadata available
+                        from ..config import EMBEDDING_MODEL
+                        
+                        vector_store_info.extend([
+                            ("🤖 임베딩 모델", EMBEDDING_MODEL),
+                            ("🔧 벡터 스토어 상태", stats.get("status", "활성")),
+                            ("🔪 현재 청크 크기", st.session_state.get("chunk_size", "N/A")),
+                            ("🔗 현재 청크 오버랩", st.session_state.get("chunk_overlap", "N/A")),
+                            ("🔍 기본 검색 수", st.session_state.get("top_k", "N/A"))
+                        ])
+                    
+                    # Display information in a clean format
+                    for i in range(0, len(vector_store_info), 2):
+                        col1, col2 = st.columns(2)
+                        
+                        with col1:
+                            if i < len(vector_store_info):
+                                key, value = vector_store_info[i]
+                                st.write(f"**{key}:** {value}")
+                        
+                        with col2:
+                            if i + 1 < len(vector_store_info):
+                                key, value = vector_store_info[i + 1]
+                                st.write(f"**{key}:** {value}")
+                    
+                    # Sample document information
+                    st.write("### 🔍 샘플 문서 정보")
+                    sample_docs = vector_store.similarity_search("test", k=3)
+                    if sample_docs:
+                        st.success(f"✅ 검색 테스트 성공 - {len(sample_docs)}개 문서 발견")
+                        
+                        # Show sample documents in a table
+                        sample_data = []
+                        for i, doc in enumerate(sample_docs):
+                            sample_data.append({
+                                "순번": i + 1,
+                                "출처": doc.metadata.get('source', 'Unknown'),
+                                "페이지": doc.metadata.get('page_number', 'N/A'),
+                                "문자 수": len(doc.page_content),
+                                "내용 미리보기": doc.page_content[:100] + "..." if len(doc.page_content) > 100 else doc.page_content
+                            })
+                        
+                        import pandas as pd
+                        df_samples = pd.DataFrame(sample_data)
+                        st.dataframe(df_samples, use_container_width=True)
+                        
+                        # Show unique sources
+                        unique_sources = set(doc.metadata.get('source', 'Unknown') for doc in sample_docs)
+                        if len(unique_sources) > 1:
+                            st.info(f"📚 **발견된 소스 파일:** {', '.join(sorted(unique_sources))}")
+                        else:
+                            st.info(f"📚 **주요 소스 파일:** {list(unique_sources)[0]}")
+                    else:
+                        st.warning("⚠️ 벡터 스토어가 비어있거나 접근할 수 없습니다.")
+                        
                 else:
-                    st.warning("⚠️ 벡터 스토어가 비어있습니다.")
+                    st.error("❌ 벡터 스토어 매니저를 찾을 수 없습니다.")
+                    
             except Exception as e:
-                st.warning(f"⚠️ 벡터 스토어 상태 확인 실패: {str(e)}")
+                st.error(f"❌ 벡터 스토어 상태 확인 실패: {str(e)}")
+                
+                # Show basic fallback information
+                st.write("### ⚠️ 기본 정보")
+                st.write(f"**🤖 임베딩 모델:** {st.session_state.get('selected_embedding_model', 'sentence-transformers/all-MiniLM-L6-v2')}")
+                st.write(f"**🔧 벡터 스토어 타입:** {st.session_state.get('vector_store_type', 'faiss').upper()}")
+                st.write(f"**🔪 청크 크기:** {st.session_state.get('chunk_size', 'N/A')}")
+                st.write(f"**🔗 청크 오버랩:** {st.session_state.get('chunk_overlap', 'N/A')}")
     
     @staticmethod
     def _initialize_rag_systems():

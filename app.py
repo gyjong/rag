@@ -52,6 +52,12 @@ def get_or_create_vector_store_manager() -> Optional[VectorStoreManager]:
             )
             st.session_state.embedding_manager = embedding_manager
             
+            # Initialize empty metadata if not exists
+            if "vector_store_metadata" not in st.session_state:
+                st.session_state.vector_store_metadata = {}
+            if "vector_store_source" not in st.session_state:
+                st.session_state.vector_store_source = "auto_created"
+            
         except Exception as e:
             st.error(f"❌ 벡터 스토어 매니저 초기화 실패: {str(e)}")
             return None
@@ -203,14 +209,6 @@ def setup_sidebar():
     st.sidebar.write(f"**청크 크기:** {chunk_size}")
     st.sidebar.write(f"**청크 오버랩:** {chunk_overlap}")
     st.sidebar.write(f"**기본 검색 수:** {top_k}")
-
-
-
-
-
-# def about_tab():
-#     """About and documentation tab."""
-#     AboutUI.display_about_page()
 
 
 def main():
