@@ -140,3 +140,7 @@ logs/
 
 # models
 models/
+
+
+# json data
+json_data/

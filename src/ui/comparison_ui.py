@@ -130,12 +130,26 @@ class ComparisonUI:
                 "검색 문서 수": retrieved_count,
                 "검색 방법": search_method_str,
                 "질문 유형": query_type,
-                "신뢰도": round(confidence, 2) if confidence > 0 else "N/A",
+                "신뢰도": round(confidence, 2) if confidence > 0 else 0.0,  # Always float
                 "반복 횟수": iterations,
-                "압축률": f"{compression_ratio:.1%}" if compression_ratio > 0 else "N/A"
+                "압축률": round(compression_ratio * 100, 1) if compression_ratio > 0 else 0.0  # Always float
             })
         
         df_metrics = pd.DataFrame(metrics_data)
+        
+        # Format columns for better display
+        if "압축률" in df_metrics.columns:
+            # Convert compression ratio back to percentage format for display
+            df_metrics["압축률 (%)"] = df_metrics["압축률"].apply(
+                lambda x: f"{x:.1f}%" if x > 0 else "0.0%"
+            )
+            df_metrics = df_metrics.drop(columns=["압축률"])
+        
+        if "신뢰도" in df_metrics.columns:
+            # Format confidence for better display
+            df_metrics["신뢰도"] = df_metrics["신뢰도"].apply(
+                lambda x: f"{x:.2f}" if x > 0 else "0.00"
+            )
         
         # Display enhanced metrics table
         st.dataframe(df_metrics, use_container_width=True)

@@ -1,8 +1,10 @@
 """Document processing utilities for the RAG application."""
 
 import os
+import json
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
+from datetime import datetime
 
 import streamlit as st
 from langchain_text_splitters import RecursiveCharacterTextSplitter
@@ -59,12 +61,16 @@ class DocumentProcessor:
                 loader = PyPDFLoader(str(pdf_file))
                 docs = loader.load()
                 
-                # Add metadata
-                for doc in docs:
+                # Add enhanced metadata
+                for page_num, doc in enumerate(docs):
                     doc.metadata.update({
                         "source": pdf_file.name,
                         "file_path": str(pdf_file),
-                        "doc_type": "pdf"
+                        "doc_type": "pdf",
+                        "page_number": page_num + 1,
+                        "total_pages": len(docs),
+                        "file_size_mb": round(pdf_file.stat().st_size / (1024 * 1024), 2),
+                        "loaded_at": datetime.now().isoformat()
                     })
                 
                 documents.extend(docs)
@@ -79,6 +85,85 @@ class DocumentProcessor:
         status_text.empty()
         
         return documents
+
+    def save_documents_to_json(self, documents: List[Document], output_path: Path) -> bool:
+        """Save loaded documents to JSON format.
+        
+        Args:
+            documents: List of documents to save
+            output_path: Path to save the JSON file
+            
+        Returns:
+            True if successful, False otherwise
+        """
+        try:
+            # Create structured data
+            json_data = {
+                "metadata": {
+                    "created_at": datetime.now().isoformat(),
+                    "total_documents": len(documents),
+                    "total_characters": sum(len(doc.page_content) for doc in documents),
+                    "chunk_config": {
+                        "chunk_size": self.chunk_size,
+                        "chunk_overlap": self.chunk_overlap
+                    }
+                },
+                "documents": []
+            }
+            
+            # Convert documents to JSON format
+            for i, doc in enumerate(documents):
+                doc_data = {
+                    "id": i,
+                    "content": doc.page_content,
+                    "metadata": doc.metadata,
+                    "content_stats": {
+                        "character_count": len(doc.page_content),
+                        "word_count": len(doc.page_content.split()),
+                        "line_count": len(doc.page_content.split('\n'))
+                    }
+                }
+                json_data["documents"].append(doc_data)
+            
+            # Save to file
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+            with open(output_path, 'w', encoding='utf-8') as f:
+                json.dump(json_data, f, ensure_ascii=False, indent=2)
+            
+            st.success(f"✅ 문서 데이터가 JSON으로 저장되었습니다: {output_path}")
+            return True
+            
+        except Exception as e:
+            st.error(f"❌ JSON 저장 실패: {str(e)}")
+            return False
+
+    def load_documents_from_json(self, json_path: Path) -> List[Document]:
+        """Load documents from JSON format.
+        
+        Args:
+            json_path: Path to the JSON file
+            
+        Returns:
+            List of loaded documents
+        """
+        try:
+            with open(json_path, 'r', encoding='utf-8') as f:
+                json_data = json.load(f)
+            
+            documents = []
+            for doc_data in json_data.get("documents", []):
+                doc = Document(
+                    page_content=doc_data["content"],
+                    metadata=doc_data["metadata"]
+                )
+                documents.append(doc)
+            
+            st.success(f"✅ JSON에서 {len(documents)}개 문서를 로딩했습니다")
+            return documents
+            
+        except Exception as e:
+            st.error(f"❌ JSON 로딩 실패: {str(e)}")
+            return []
 
     def split_documents(self, documents: List[Document]) -> List[Document]:
         """Split documents into chunks.
@@ -95,15 +180,131 @@ class DocumentProcessor:
         with st.spinner("문서 분할 중..."):
             chunks = self.text_splitter.split_documents(documents)
             
-        # Add chunk metadata
+        # Add enhanced chunk metadata
         for i, chunk in enumerate(chunks):
             chunk.metadata.update({
                 "chunk_id": i,
-                "chunk_size": len(chunk.page_content)
+                "chunk_size": len(chunk.page_content),
+                "word_count": len(chunk.page_content.split()),
+                "chunked_at": datetime.now().isoformat()
             })
             
         st.success(f"문서가 {len(chunks)}개의 청크로 분할되었습니다.")
         return chunks
+
+    def save_chunks_to_json(self, chunks: List[Document], output_path: Path) -> bool:
+        """Save document chunks to JSON format.
+        
+        Args:
+            chunks: List of chunks to save
+            output_path: Path to save the JSON file
+            
+        Returns:
+            True if successful, False otherwise
+        """
+        try:
+            # Create structured chunk data
+            json_data = {
+                "metadata": {
+                    "created_at": datetime.now().isoformat(),
+                    "total_chunks": len(chunks),
+                    "total_characters": sum(len(chunk.page_content) for chunk in chunks),
+                    "average_chunk_size": sum(len(chunk.page_content) for chunk in chunks) / len(chunks) if chunks else 0,
+                    "chunk_config": {
+                        "chunk_size": self.chunk_size,
+                        "chunk_overlap": self.chunk_overlap
+                    }
+                },
+                "chunks": []
+            }
+            
+            # Convert chunks to JSON format
+            for chunk in chunks:
+                chunk_data = {
+                    "id": chunk.metadata.get("chunk_id", 0),
+                    "content": chunk.page_content,
+                    "metadata": chunk.metadata,
+                    "content_stats": {
+                        "character_count": len(chunk.page_content),
+                        "word_count": len(chunk.page_content.split()),
+                        "line_count": len(chunk.page_content.split('\n'))
+                    }
+                }
+                json_data["chunks"].append(chunk_data)
+            
+            # Save to file
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+            with open(output_path, 'w', encoding='utf-8') as f:
+                json.dump(json_data, f, ensure_ascii=False, indent=2)
+            
+            st.success(f"✅ 청크 데이터가 JSON으로 저장되었습니다: {output_path}")
+            return True
+            
+        except Exception as e:
+            st.error(f"❌ JSON 저장 실패: {str(e)}")
+            return False
+
+    def load_chunks_from_json(self, json_path: Path) -> List[Document]:
+        """Load document chunks from JSON format.
+        
+        Args:
+            json_path: Path to the JSON file
+            
+        Returns:
+            List of loaded chunks
+        """
+        try:
+            with open(json_path, 'r', encoding='utf-8') as f:
+                json_data = json.load(f)
+            
+            chunks = []
+            for chunk_data in json_data.get("chunks", []):
+                chunk = Document(
+                    page_content=chunk_data["content"],
+                    metadata=chunk_data["metadata"]
+                )
+                chunks.append(chunk)
+            
+            st.success(f"✅ JSON에서 {len(chunks)}개 청크를 로딩했습니다")
+            return chunks
+            
+        except Exception as e:
+            st.error(f"❌ JSON 로딩 실패: {str(e)}")
+            return []
+
+    def get_json_info(self, json_path: Path) -> Optional[Dict[str, Any]]:
+        """Get information about a JSON file.
+        
+        Args:
+            json_path: Path to the JSON file
+            
+        Returns:
+            Dictionary with JSON file information
+        """
+        try:
+            with open(json_path, 'r', encoding='utf-8') as f:
+                json_data = json.load(f)
+            
+            metadata = json_data.get("metadata", {})
+            
+            # Determine if it's documents or chunks
+            data_type = "chunks" if "chunks" in json_data else "documents"
+            data_list = json_data.get(data_type, [])
+            
+            return {
+                "file_path": str(json_path),
+                "file_size_mb": round(json_path.stat().st_size / (1024 * 1024), 2),
+                "data_type": data_type,
+                "created_at": metadata.get("created_at", "Unknown"),
+                "total_items": len(data_list),
+                "total_characters": metadata.get("total_characters", 0),
+                "chunk_config": metadata.get("chunk_config", {}),
+                "sample_content": data_list[0]["content"][:200] + "..." if data_list else ""
+            }
+            
+        except Exception as e:
+            st.error(f"❌ JSON 정보 조회 실패: {str(e)}")
+            return None
 
     def get_document_stats(self, documents: List[Document]) -> dict:
         """Get statistics about the loaded documents.

@@ -12,6 +12,7 @@ PROJECT_ROOT = Path(__file__).parent.parent
 DOCS_FOLDER = PROJECT_ROOT / "docs"
 FONTS_FOLDER = PROJECT_ROOT / "fonts"
 FONT_PATH = FONTS_FOLDER / "Paperlogy.ttf"
+JSON_OUTPUT_FOLDER = PROJECT_ROOT / "json_data"
 
 # LLM Configuration
 DEFAULT_LLM_MODEL = "gemma3:12b-it-qat"
