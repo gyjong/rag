@@ -25,6 +25,8 @@ from src.ui.about_ui import AboutUI
 from src.ui.document_loading_ui import DocumentLoadingUI
 from src.ui.vector_store_ui import VectorStoreUI
 from src.ui.rag_experiment_ui import RAGExperimentUI
+from src.ui.translation_ui import TranslationUI
+from src.ui.json_services_ui import JSONServicesUI
 
 
 def load_custom_font():
@@ -225,11 +227,13 @@ def main():
     setup_sidebar()
     
     # Main tabs
-    tab1, tab2, tab3, tab4, tab5 = st.tabs([
+    tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
         "📚 문서 로딩",
         "🔍 벡터 스토어",
         "🧪 RAG 실험",
         "📊 결과 비교",
+        "🌐 문서 번역",
+        "🏢 정보 서비스",
         "ℹ️ 소개"
     ])
     
@@ -246,6 +250,13 @@ def main():
         ComparisonUI.display_comparison_tab()
     
     with tab5:
+        TranslationUI.display_translation_tab()
+    
+    with tab6:
+        json_services_ui = JSONServicesUI()
+        json_services_ui.render()
+    
+    with tab7:
         # about_tab()
         AboutUI.display_about_page()
 

@@ -8,7 +8,11 @@ from datetime import datetime
 
 import streamlit as st
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain_community.document_loaders import PyPDFLoader
+from langchain_community.document_loaders import (
+    PyPDFLoader, 
+    TextLoader, 
+    Docx2txtLoader
+)
 from langchain_core.documents import Document
 
 
@@ -123,6 +127,109 @@ class DocumentProcessor:
             
         except Exception as e:
             raise Exception(f"문서 로딩 실패 {file_path.name}: {str(e)}")
+                
+        return documents
+
+    def load_documents(self, file_paths: List[str]) -> List[Document]:
+        """Load documents from multiple files of various formats.
+        
+        Args:
+            file_paths: List of file paths to load
+            
+        Returns:
+            List of loaded documents
+        """
+        documents = []
+        
+        for file_path_str in file_paths:
+            file_path = Path(file_path_str)
+            
+            if not file_path.exists():
+                st.warning(f"파일이 존재하지 않습니다: {file_path}")
+                continue
+                
+            try:
+                file_extension = file_path.suffix.lower()
+                
+                if file_extension == '.pdf':
+                    loader = PyPDFLoader(str(file_path))
+                    docs = loader.load()
+                    doc_type = "pdf"
+                    
+                elif file_extension == '.txt':
+                    # Try different encodings for text files
+                    docs = None
+                    doc_type = "txt"
+                    for encoding in ['utf-8', 'utf-8-sig', 'cp949', 'euc-kr']:
+                        try:
+                            loader = TextLoader(str(file_path), encoding=encoding)
+                            docs = loader.load()
+                            break
+                        except UnicodeDecodeError:
+                            continue
+                    
+                    if docs is None:
+                        # If all encodings fail, read with errors='ignore'
+                        with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
+                            content = f.read()
+                        docs = [Document(page_content=content, metadata={})]
+                    
+                elif file_extension == '.docx':
+                    loader = Docx2txtLoader(str(file_path))
+                    docs = loader.load()
+                    doc_type = "docx"
+                    
+                elif file_extension == '.md':
+                    # Handle markdown files as text files
+                    try:
+                        with open(file_path, 'r', encoding='utf-8') as f:
+                            content = f.read()
+                        docs = [Document(page_content=content, metadata={})]
+                        doc_type = "markdown"
+                    except UnicodeDecodeError:
+                        # Try with different encodings
+                        for encoding in ['utf-8-sig', 'cp949', 'euc-kr']:
+                            try:
+                                with open(file_path, 'r', encoding=encoding) as f:
+                                    content = f.read()
+                                docs = [Document(page_content=content, metadata={})]
+                                doc_type = "markdown"
+                                break
+                            except UnicodeDecodeError:
+                                continue
+                        else:
+                            # If all fail, read with errors='ignore'
+                            with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
+                                content = f.read()
+                            docs = [Document(page_content=content, metadata={})]
+                            doc_type = "markdown"
+                    
+                else:
+                    st.warning(f"지원하지 않는 파일 형식: {file_extension} ({file_path.name})")
+                    continue
+                
+                # Add enhanced metadata
+                for i, doc in enumerate(docs):
+                    doc.metadata.update({
+                        "source": file_path.name,
+                        "file_path": str(file_path),
+                        "doc_type": doc_type,
+                        "file_size_mb": round(file_path.stat().st_size / (1024 * 1024), 2),
+                        "loaded_at": datetime.now().isoformat()
+                    })
+                    
+                    # Add page numbers for PDFs
+                    if doc_type == "pdf":
+                        doc.metadata.update({
+                            "page_number": i + 1,
+                            "total_pages": len(docs)
+                        })
+                
+                documents.extend(docs)
+                
+            except Exception as e:
+                st.error(f"문서 로딩 실패 {file_path.name}: {str(e)}")
+                continue
                 
         return documents
 

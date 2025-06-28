@@ -1,0 +1,410 @@
+{
+  "metadata": {
+    "title": "서울시내 버스 기간표 예제",
+    "description": "서울특별시 주요 구간별 버스 노선 및 시간표 정보",
+    "last_updated": "2024-12-19",
+    "version": "2.0"
+  },
+  "bus_routes": [
+    {
+      "route_id": "R001",
+      "bus_number": "1000",
+      "route_name": "강남-종로 간선버스",
+      "route_type": "간선버스",
+      "operator": "서울교통공사",
+      "departure_terminal": {
+        "name": "강남역",
+        "address": "서울특별시 강남구 강남대로 396",
+        "contact": "02-120"
+      },
+      "arrival_terminal": {
+        "name": "종로3가역",
+        "address": "서울특별시 종로구 종로 151",
+        "contact": "02-120"
+      },
+      "intermediate_stops": [
+        {
+          "stop_name": "역삼역",
+          "arrival_time_offset": 5,
+          "departure_time_offset": 6,
+          "address": "서울특별시 강남구 테헤란로 114"
+        },
+        {
+          "stop_name": "서울역",
+          "arrival_time_offset": 25,
+          "departure_time_offset": 27,
+          "address": "서울특별시 중구 한강대로 405"
+        },
+        {
+          "stop_name": "명동",
+          "arrival_time_offset": 35,
+          "departure_time_offset": 37,
+          "address": "서울특별시 중구 명동길 26"
+        },
+        {
+          "stop_name": "을지로입구",
+          "arrival_time_offset": 40,
+          "departure_time_offset": 42,
+          "address": "서울특별시 중구 을지로 66"
+        }
+      ],
+      "distance_km": 18,
+      "estimated_duration_minutes": 50,
+      "fares": {
+        "adult": {
+          "card": 1500,
+          "cash": 1600
+        },
+        "student": {
+          "card": 720,
+          "cash": 1000
+        },
+        "child": {
+          "card": 350,
+          "cash": 500
+        },
+        "senior": {
+          "card": 0,
+          "cash": 0
+        }
+      },
+      "schedule": [
+        {
+          "departure_time": "05:30",
+          "arrival_time": "06:20",
+          "frequency_minutes": 8,
+          "last_bus": "23:30"
+        }
+      ],
+      "facilities": ["저상버스", "WiFi", "USB충전", "에어컨", "휠체어탑승가능"],
+      "notes": "출퇴근시간 배차간격 단축 운행"
+    },
+    {
+      "route_id": "R002",
+      "bus_number": "5500",
+      "route_name": "마포-송파 간선버스",
+      "route_type": "간선버스",
+      "operator": "서울시내버스",
+      "departure_terminal": {
+        "name": "홍대입구역",
+        "address": "서울특별시 마포구 양화로 188",
+        "contact": "02-120"
+      },
+      "arrival_terminal": {
+        "name": "잠실역",
+        "address": "서울특별시 송파구 올림픽로 265",
+        "contact": "02-120"
+      },
+      "intermediate_stops": [
+        {
+          "stop_name": "신촌역",
+          "arrival_time_offset": 8,
+          "departure_time_offset": 9,
+          "address": "서울특별시 서대문구 신촌로 83"
+        },
+        {
+          "stop_name": "시청역",
+          "arrival_time_offset": 25,
+          "departure_time_offset": 27,
+          "address": "서울특별시 중구 세종대로 110"
+        },
+        {
+          "stop_name": "동대문",
+          "arrival_time_offset": 35,
+          "departure_time_offset": 37,
+          "address": "서울특별시 중구 을지로6가 18-21"
+        },
+        {
+          "stop_name": "건국대입구",
+          "arrival_time_offset": 45,
+          "departure_time_offset": 47,
+          "address": "서울특별시 광진구 능동로 120"
+        }
+      ],
+      "distance_km": 22,
+      "estimated_duration_minutes": 60,
+      "fares": {
+        "adult": {
+          "card": 1500,
+          "cash": 1600
+        },
+        "student": {
+          "card": 720,
+          "cash": 1000
+        },
+        "child": {
+          "card": 350,
+          "cash": 500
+        },
+        "senior": {
+          "card": 0,
+          "cash": 0
+        }
+      },
+      "schedule": [
+        {
+          "departure_time": "05:20",
+          "arrival_time": "06:20",
+          "frequency_minutes": 10,
+          "last_bus": "23:20"
+        }
+      ],
+      "facilities": ["저상버스", "WiFi", "USB충전", "에어컨"],
+      "notes": "평일 10분 간격, 주말 15분 간격 운행"
+    },
+    {
+      "route_id": "R003",
+      "bus_number": "302",
+      "route_name": "용산-노원 간선버스",
+      "route_type": "간선버스",
+      "operator": "서울시내버스",
+      "departure_terminal": {
+        "name": "용산역",
+        "address": "서울특별시 용산구 한강대로23길 55",
+        "contact": "02-120"
+      },
+      "arrival_terminal": {
+        "name": "노원역",
+        "address": "서울특별시 노원구 노원로 1414",
+        "contact": "02-120"
+      },
+      "intermediate_stops": [
+        {
+          "stop_name": "이촌역",
+          "arrival_time_offset": 8,
+          "departure_time_offset": 9,
+          "address": "서울특별시 용산구 이촌로 294"
+        },
+        {
+          "stop_name": "왕십리역",
+          "arrival_time_offset": 25,
+          "departure_time_offset": 26,
+          "address": "서울특별시 성동구 왕십리로 206"
+        },
+        {
+          "stop_name": "청량리역",
+          "arrival_time_offset": 35,
+          "departure_time_offset": 36,
+          "address": "서울특별시 동대문구 왕산로 205"
+        },
+        {
+          "stop_name": "미아역",
+          "arrival_time_offset": 50,
+          "departure_time_offset": 51,
+          "address": "서울특별시 강북구 도봉로 344"
+        },
+        {
+          "stop_name": "수유역",
+          "arrival_time_offset": 58,
+          "departure_time_offset": 59,
+          "address": "서울특별시 강북구 도봉로 430"
+        }
+      ],
+      "distance_km": 24,
+      "estimated_duration_minutes": 65,
+      "fares": {
+        "adult": {
+          "card": 1500,
+          "cash": 1600
+        },
+        "student": {
+          "card": 720,
+          "cash": 1000
+        },
+        "child": {
+          "card": 350,
+          "cash": 500
+        },
+        "senior": {
+          "card": 0,
+          "cash": 0
+        }
+      },
+      "schedule": [
+        {
+          "departure_time": "05:30",
+          "arrival_time": "06:35",
+          "frequency_minutes": 8,
+          "last_bus": "23:00"
+        }
+      ],
+      "facilities": ["저상버스", "휠체어탑승가능", "에어컨"],
+      "notes": "평일 배차간격 8-12분, 주말 10-15분"
+    },
+    {
+      "route_id": "R004",
+      "bus_number": "M5107",
+      "route_name": "영등포-강동 광역버스",
+      "route_type": "광역버스",
+      "operator": "서울교통공사",
+      "departure_terminal": {
+        "name": "영등포구청역",
+        "address": "서울특별시 영등포구 당산로 123",
+        "contact": "02-120"
+      },
+      "arrival_terminal": {
+        "name": "강동역",
+        "address": "서울특별시 강동구 천호대로 1017",
+        "contact": "02-120"
+      },
+      "intermediate_stops": [
+        {
+          "stop_name": "여의도역",
+          "arrival_time_offset": 10,
+          "departure_time_offset": 11,
+          "address": "서울특별시 영등포구 여의공원로 55"
+        },
+        {
+          "stop_name": "공덕역",
+          "arrival_time_offset": 18,
+          "departure_time_offset": 19,
+          "address": "서울특별시 마포구 마포대로 92"
+        },
+        {
+          "stop_name": "을지로4가",
+          "arrival_time_offset": 35,
+          "departure_time_offset": 36,
+          "address": "서울특별시 중구 을지로 279"
+        },
+        {
+          "stop_name": "왕십리역",
+          "arrival_time_offset": 45,
+          "departure_time_offset": 46,
+          "address": "서울특별시 성동구 왕십리로 206"
+        }
+      ],
+      "distance_km": 26,
+      "estimated_duration_minutes": 55,
+      "fares": {
+        "adult": {
+          "card": 2150,
+          "cash": 2200
+        },
+        "student": {
+          "card": 1720,
+          "cash": 1800
+        },
+        "child": {
+          "card": 1080,
+          "cash": 1100
+        }
+      },
+      "schedule": [
+        {
+          "departure_time": "05:40",
+          "arrival_time": "06:35",
+          "frequency_minutes": 12,
+          "last_bus": "23:20"
+        }
+      ],
+      "facilities": ["WiFi", "USB충전", "에어컨", "좌석예약"],
+      "notes": "출퇴근시간 배차간격 단축 운행"
+    },
+    {
+      "route_id": "R005",
+      "bus_number": "9401",
+      "route_name": "서초-성북 간선버스",
+      "route_type": "간선버스",
+      "operator": "서울시내버스",
+      "departure_terminal": {
+        "name": "서초역",
+        "address": "서울특별시 서초구 서초대로 294",
+        "contact": "02-120"
+      },
+      "arrival_terminal": {
+        "name": "성신여대입구역",
+        "address": "서울특별시 성북구 보문로 168",
+        "contact": "02-120"
+      },
+      "intermediate_stops": [
+        {
+          "stop_name": "교대역",
+          "arrival_time_offset": 8,
+          "departure_time_offset": 9,
+          "address": "서울특별시 서초구 서초중앙로 194"
+        },
+        {
+          "stop_name": "남부터미널",
+          "arrival_time_offset": 15,
+          "departure_time_offset": 16,
+          "address": "서울특별시 서초구 신반포로 176"
+        },
+        {
+          "stop_name": "한강진역",
+          "arrival_time_offset": 25,
+          "departure_time_offset": 26,
+          "address": "서울특별시 용산구 이태원로 146"
+        },
+        {
+          "stop_name": "동대문역사문화공원",
+          "arrival_time_offset": 40,
+          "departure_time_offset": 41,
+          "address": "서울특별시 중구 을지로 281"
+        },
+        {
+          "stop_name": "혜화역",
+          "arrival_time_offset": 50,
+          "departure_time_offset": 51,
+          "address": "서울특별시 종로구 대학로 116"
+        }
+      ],
+      "distance_km": 20,
+      "estimated_duration_minutes": 60,
+      "fares": {
+        "adult": {
+          "card": 1500,
+          "cash": 1600
+        },
+        "student": {
+          "card": 720,
+          "cash": 1000
+        },
+        "child": {
+          "card": 350,
+          "cash": 500
+        },
+        "senior": {
+          "card": 0,
+          "cash": 0
+        }
+      },
+      "schedule": [
+        {
+          "departure_time": "05:00",
+          "arrival_time": "06:00",
+          "frequency_minutes": 10,
+          "last_bus": "23:00"
+        }
+      ],
+      "facilities": ["저상버스", "WiFi", "USB충전", "에어컨"],
+      "notes": "평일 10분 간격, 주말 15분 간격 운행"
+    }
+  ],
+  "common_info": {
+    "payment_methods": ["교통카드", "현금", "모바일결제", "신용카드"],
+    "discount_cards": ["청소년카드", "경로우대카드", "장애인카드", "한부모가족카드"],
+    "transfer_discount": {
+      "bus_to_bus": 100,
+      "bus_to_subway": 100,
+      "subway_to_bus": 100,
+      "time_limit_minutes": 30
+    },
+    "real_time_info": {
+      "app": "서울버스",
+      "website": "https://bus.go.kr",
+      "sms": "정류장번호를 2540으로 전송",
+      "citybusseoul": "https://www.seoul.go.kr/traffic/"
+    },
+    "customer_service": "02-120 (다산콜센터)",
+    "lost_and_found": "서울시 종합민원실 및 각 구청 문의",
+    "accessibility": {
+      "low_floor_bus": "전체 노선의 80% 이상",
+      "wheelchair_accessible": "저상버스 운행",
+      "audio_announcement": "시각장애인을 위한 음성안내"
+    },
+    "seoul_transport_card": {
+      "types": ["티머니", "원패스", "이비", "교통카드"],
+      "benefits": "환승할인, 연령별 할인"
+    }
+  }
+} 

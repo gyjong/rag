@@ -50,4 +50,31 @@ QUERY_EXPANSION_COUNT = 3
 
 # Modular RAG Configuration
 MAX_ITERATIONS = 3
-CONFIDENCE_THRESHOLD = 0.8 
+CONFIDENCE_THRESHOLD = 0.8
+
+# Translation Configuration
+SUPPORTED_SOURCE_LANGUAGES = [
+    "English",
+    "French", 
+    "German",
+    "Spanish",
+    "Italian",
+    "Portuguese",
+    "Dutch",
+    "Russian",
+    "Chinese",
+    "Japanese"
+]
+
+SUPPORTED_TARGET_LANGUAGES = [
+    "Korean",
+    "English",
+    "Japanese", 
+    "Chinese"
+]
+
+DEFAULT_SOURCE_LANGUAGE = "English"
+DEFAULT_TARGET_LANGUAGE = "Korean"
+
+# Translation file support
+SUPPORTED_TRANSLATION_FILE_TYPES = ['txt', 'pdf', 'docx', 'md'] 

@@ -1,0 +1,528 @@
+{
+  "restaurant_info": {
+    "name": "샘플 구내식당",
+    "location": "서울시 강남구",
+    "contact": "02-1234-5678",
+    "operating_hours": "07:00 - 20:00"
+  },
+  "menu_plan": {
+    "week_period": "2024-01-15 ~ 2024-01-21",
+    "currency": "KRW",
+    "daily_menus": [
+      {
+        "date": "2024-01-15",
+        "day_of_week": "월요일",
+        "meals": [
+          {
+            "meal_type": "조식",
+            "meal_type_eng": "breakfast",
+            "service_time": "07:00 - 09:30",
+            "cuisine_type": "한식",
+            "cuisine_type_eng": "Korean",
+            "total_calories": 580,
+            "price": 4500,
+            "menu_items": [
+              {
+                "category": "주식",
+                "name": "현미밥",
+                "calories": 180,
+                "nutrients": {
+                  "carbohydrates": "35g",
+                  "protein": "4g",
+                  "fat": "1g",
+                  "fiber": "3g"
+                }
+              },
+              {
+                "category": "국물",
+                "name": "미역국",
+                "calories": 45,
+                "nutrients": {
+                  "carbohydrates": "3g",
+                  "protein": "2g",
+                  "fat": "2g",
+                  "sodium": "800mg"
+                }
+              },
+              {
+                "category": "주찬",
+                "name": "불고기",
+                "calories": 220,
+                "nutrients": {
+                  "carbohydrates": "8g",
+                  "protein": "20g",
+                  "fat": "12g"
+                }
+              },
+              {
+                "category": "부찬",
+                "name": "시금치나물",
+                "calories": 35,
+                "nutrients": {
+                  "carbohydrates": "3g",
+                  "protein": "3g",
+                  "fat": "1g",
+                  "vitamin_A": "469μg"
+                }
+              },
+              {
+                "category": "부찬",
+                "name": "배추김치",
+                "calories": 25,
+                "nutrients": {
+                  "carbohydrates": "3g",
+                  "protein": "1g",
+                  "fat": "0g",
+                  "vitamin_C": "25mg"
+                }
+              },
+              {
+                "category": "후식",
+                "name": "요구르트",
+                "calories": 75,
+                "nutrients": {
+                  "carbohydrates": "12g",
+                  "protein": "3g",
+                  "fat": "2g",
+                  "calcium": "120mg"
+                }
+              }
+            ],
+            "allergens": ["우유", "대두"],
+            "dietary_options": {
+              "vegetarian_available": true,
+              "vegan_available": false,
+              "gluten_free": false,
+              "halal": false
+            }
+          },
+          {
+            "meal_type": "중식",
+            "meal_type_eng": "lunch",
+            "service_time": "11:30 - 14:00",
+            "cuisine_type": "중식",
+            "cuisine_type_eng": "Chinese",
+            "total_calories": 920,
+            "price": 7500,
+            "menu_items": [
+              {
+                "category": "주식",
+                "name": "짜장면",
+                "calories": 520,
+                "nutrients": {
+                  "carbohydrates": "78g",
+                  "protein": "18g",
+                  "fat": "16g",
+                  "sodium": "1200mg"
+                }
+              },
+              {
+                "category": "주찬",
+                "name": "탕수육",
+                "calories": 280,
+                "nutrients": {
+                  "carbohydrates": "25g",
+                  "protein": "15g",
+                  "fat": "14g"
+                }
+              },
+              {
+                "category": "부찬",
+                "name": "단무지",
+                "calories": 15,
+                "nutrients": {
+                  "carbohydrates": "3g",
+                  "protein": "0g",
+                  "fat": "0g"
+                }
+              },
+              {
+                "category": "국물",
+                "name": "계란탕",
+                "calories": 65,
+                "nutrients": {
+                  "carbohydrates": "2g",
+                  "protein": "4g",
+                  "fat": "4g"
+                }
+              },
+              {
+                "category": "후식",
+                "name": "군만두 (2개)",
+                "calories": 40,
+                "nutrients": {
+                  "carbohydrates": "15g",
+                  "protein": "8g",
+                  "fat": "8g"
+                }
+              }
+            ],
+            "allergens": ["밀", "계란", "대두", "돼지고기"],
+            "dietary_options": {
+              "vegetarian_available": false,
+              "vegan_available": false,
+              "gluten_free": false,
+              "halal": false
+            }
+          },
+          {
+            "meal_type": "석식",
+            "meal_type_eng": "dinner",
+            "service_time": "17:30 - 19:30",
+            "cuisine_type": "양식",
+            "cuisine_type_eng": "Western",
+            "total_calories": 850,
+            "price": 8000,
+            "menu_items": [
+              {
+                "category": "주식",
+                "name": "스파게티 까르보나라",
+                "calories": 480,
+                "nutrients": {
+                  "carbohydrates": "58g",
+                  "protein": "22g",
+                  "fat": "18g",
+                  "sodium": "950mg"
+                }
+              },
+              {
+                "category": "주찬",
+                "name": "치킨 스테이크",
+                "calories": 250,
+                "nutrients": {
+                  "carbohydrates": "3g",
+                  "protein": "28g",
+                  "fat": "13g"
+                }
+              },
+              {
+                "category": "부찬",
+                "name": "시저 샐러드",
+                "calories": 85,
+                "nutrients": {
+                  "carbohydrates": "6g",
+                  "protein": "4g",
+                  "fat": "6g",
+                  "vitamin_K": "85μg"
+                }
+              },
+              {
+                "category": "후식",
+                "name": "마늘빵",
+                "calories": 35,
+                "nutrients": {
+                  "carbohydrates": "18g",
+                  "protein": "3g",
+                  "fat": "8g"
+                }
+              }
+            ],
+            "allergens": ["밀", "계란", "우유", "견과류"],
+            "dietary_options": {
+              "vegetarian_available": true,
+              "vegan_available": false,
+              "gluten_free": false,
+              "halal": true
+            }
+          }
+        ]
+      },
+      {
+        "date": "2024-01-16",
+        "day_of_week": "화요일",
+        "meals": [
+          {
+            "meal_type": "조식",
+            "meal_type_eng": "breakfast",
+            "service_time": "07:00 - 09:30",
+            "cuisine_type": "양식",
+            "cuisine_type_eng": "Western",
+            "total_calories": 640,
+            "price": 5000,
+            "menu_items": [
+              {
+                "category": "주식",
+                "name": "토스트 (2조각)",
+                "calories": 160,
+                "nutrients": {
+                  "carbohydrates": "28g",
+                  "protein": "6g",
+                  "fat": "3g",
+                  "fiber": "2g"
+                }
+              },
+              {
+                "category": "주찬",
+                "name": "스크램블 에그",
+                "calories": 180,
+                "nutrients": {
+                  "carbohydrates": "2g",
+                  "protein": "12g",
+                  "fat": "14g",
+                  "cholesterol": "372mg"
+                }
+              },
+              {
+                "category": "주찬",
+                "name": "베이컨 (2조각)",
+                "calories": 90,
+                "nutrients": {
+                  "carbohydrates": "0g",
+                  "protein": "6g",
+                  "fat": "7g",
+                  "sodium": "270mg"
+                }
+              },
+              {
+                "category": "부찬",
+                "name": "구운 토마토",
+                "calories": 25,
+                "nutrients": {
+                  "carbohydrates": "4g",
+                  "protein": "1g",
+                  "fat": "0g",
+                  "lycopene": "2.5mg"
+                }
+              },
+              {
+                "category": "음료",
+                "name": "오렌지 주스",
+                "calories": 110,
+                "nutrients": {
+                  "carbohydrates": "26g",
+                  "protein": "2g",
+                  "fat": "0g",
+                  "vitamin_C": "70mg"
+                }
+              },
+              {
+                "category": "후식",
+                "name": "버터와 잼",
+                "calories": 75,
+                "nutrients": {
+                  "carbohydrates": "8g",
+                  "protein": "0g",
+                  "fat": "8g"
+                }
+              }
+            ],
+            "allergens": ["밀", "계란", "우유"],
+            "dietary_options": {
+              "vegetarian_available": true,
+              "vegan_available": false,
+              "gluten_free": false,
+              "halal": false
+            }
+          },
+          {
+            "meal_type": "중식",
+            "meal_type_eng": "lunch",
+            "service_time": "11:30 - 14:00",
+            "cuisine_type": "한식",
+            "cuisine_type_eng": "Korean",
+            "total_calories": 780,
+            "price": 6500,
+            "menu_items": [
+              {
+                "category": "주식",
+                "name": "김치볶음밥",
+                "calories": 380,
+                "nutrients": {
+                  "carbohydrates": "58g",
+                  "protein": "12g",
+                  "fat": "12g",
+                  "sodium": "1100mg"
+                }
+              },
+              {
+                "category": "국물",
+                "name": "된장찌개",
+                "calories": 95,
+                "nutrients": {
+                  "carbohydrates": "8g",
+                  "protein": "6g",
+                  "fat": "4g",
+                  "sodium": "950mg"
+                }
+              },
+              {
+                "category": "주찬",
+                "name": "제육볶음",
+                "calories": 200,
+                "nutrients": {
+                  "carbohydrates": "12g",
+                  "protein": "18g",
+                  "fat": "10g"
+                }
+              },
+              {
+                "category": "부찬",
+                "name": "콩나물무침",
+                "calories": 45,
+                "nutrients": {
+                  "carbohydrates": "4g",
+                  "protein": "4g",
+                  "fat": "2g",
+                  "vitamin_C": "15mg"
+                }
+              },
+              {
+                "category": "부찬",
+                "name": "깍두기",
+                "calories": 20,
+                "nutrients": {
+                  "carbohydrates": "3g",
+                  "protein": "1g",
+                  "fat": "0g"
+                }
+              },
+              {
+                "category": "후식",
+                "name": "수정과",
+                "calories": 40,
+                "nutrients": {
+                  "carbohydrates": "10g",
+                  "protein": "0g",
+                  "fat": "0g"
+                }
+              }
+            ],
+            "allergens": ["대두", "돼지고기"],
+            "dietary_options": {
+              "vegetarian_available": true,
+              "vegan_available": true,
+              "gluten_free": false,
+              "halal": false
+            }
+          },
+          {
+            "meal_type": "석식",
+            "meal_type_eng": "dinner",
+            "service_time": "17:30 - 19:30",
+            "cuisine_type": "일식",
+            "cuisine_type_eng": "Japanese",
+            "total_calories": 720,
+            "price": 8500,
+            "menu_items": [
+              {
+                "category": "주식",
+                "name": "연어덮밥",
+                "calories": 420,
+                "nutrients": {
+                  "carbohydrates": "45g",
+                  "protein": "25g",
+                  "fat": "15g",
+                  "omega3": "1.2g"
+                }
+              },
+              {
+                "category": "국물",
+                "name": "미소시루",
+                "calories": 35,
+                "nutrients": {
+                  "carbohydrates": "4g",
+                  "protein": "2g",
+                  "fat": "1g",
+                  "sodium": "600mg"
+                }
+              },
+              {
+                "category": "부찬",
+                "name": "새우튀김 (2개)",
+                "calories": 140,
+                "nutrients": {
+                  "carbohydrates": "12g",
+                  "protein": "8g",
+                  "fat": "8g"
+                }
+              },
+              {
+                "category": "부찬",
+                "name": "일본식 피클",
+                "calories": 15,
+                "nutrients": {
+                  "carbohydrates": "3g",
+                  "protein": "0g",
+                  "fat": "0g"
+                }
+              },
+              {
+                "category": "부찬",
+                "name": "계란말이",
+                "calories": 85,
+                "nutrients": {
+                  "carbohydrates": "2g",
+                  "protein": "6g",
+                  "fat": "6g"
+                }
+              },
+              {
+                "category": "후식",
+                "name": "녹차",
+                "calories": 2,
+                "nutrients": {
+                  "carbohydrates": "0g",
+                  "protein": "0g",
+                  "fat": "0g",
+                  "antioxidants": "high"
+                }
+              }
+            ],
+            "allergens": ["생선", "갑각류", "계란", "밀", "대두"],
+            "dietary_options": {
+              "vegetarian_available": false,
+              "vegan_available": false,
+              "gluten_free": false,
+              "halal": false
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "nutritional_guidelines": {
+    "daily_recommended_calories": {
+      "adult_male": "2200-2800",
+      "adult_female": "1800-2200",
+      "elderly": "1600-2000"
+    },
+    "meal_distribution": {
+      "breakfast": "25-30%",
+      "lunch": "35-40%",
+      "dinner": "30-35%"
+    }
+  },
+  "special_diets": {
+    "vegetarian": {
+      "description": "육류 및 어류를 포함하지 않는 식단",
+      "available_days": ["월요일 조식", "화요일 조식", "화요일 중식"]
+    },
+    "vegan": {
+      "description": "동물성 식품을 일체 포함하지 않는 식단",
+      "available_days": ["화요일 중식"]
+    },
+    "low_sodium": {
+      "description": "나트륨 함량을 줄인 식단 (1일 2000mg 미만)",
+      "available_on_request": true
+    },
+    "diabetic_friendly": {
+      "description": "당뇨 환자를 위한 저당 식단",
+      "available_on_request": true
+    }
+  },
+  "feedback_system": {
+    "rating_scale": "1-5 stars",
+    "feedback_categories": [
+      "taste",
+      "portion_size",
+      "temperature",
+      "presentation",
+      "service_speed"
+    ],
+    "contact_info": {
+      "email": "feedback@sample-restaurant.com",
+      "phone": "02-1234-5678",
+      "suggestion_box_location": "1층 로비"
+    }
+  }
+} 
