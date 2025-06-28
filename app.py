@@ -749,51 +749,42 @@ def create_vector_store_tab():
     with tab2:
         st.write("### 📥 기존 벡터 스토어에서 로딩")
         
-        # Debug: Show folder path and check existence
-        st.write(f"**🔍 디버그 정보:**")
-        st.write(f"- 벡터 스토어 폴더: `{VECTOR_STORES_FOLDER}`")
-        st.write(f"- 폴더 존재 여부: {VECTOR_STORES_FOLDER.exists()}")
-        
-        if VECTOR_STORES_FOLDER.exists():
-            all_items = list(VECTOR_STORES_FOLDER.iterdir())
-            st.write(f"- 폴더 내 항목 수: {len(all_items)}")
-            for item in all_items:
-                st.write(f"  - {'[DIR]' if item.is_dir() else '[FILE]'} {item.name}")
-        
         # List available vector stores
         saved_stores = VectorStoreManager.list_saved_vector_stores(VECTOR_STORES_FOLDER)
-        st.write(f"- **감지된 벡터 스토어 수: {len(saved_stores)}**")
-        
-        # Debug: Show individual store info
-        if VECTOR_STORES_FOLDER.exists():
-            st.write("**📋 개별 스토어 분석:**")
-            for item in VECTOR_STORES_FOLDER.iterdir():
-                if item.is_dir():
-                    metadata_path = item / "metadata.json"
-                    st.write(f"  - **{item.name}**:")
-                    st.write(f"    - metadata.json 존재: {metadata_path.exists()}")
-                    if metadata_path.exists():
-                        try:
-                            import json
-                            with open(metadata_path, 'r', encoding='utf-8') as f:
-                                metadata = json.load(f)
-                            st.write(f"    - JSON 파싱: ✅ 성공")
-                            st.write(f"    - 문서 수: {metadata.get('document_count', 'N/A')}")
-                            st.write(f"    - 타입: {metadata.get('vector_store_type', 'N/A')}")
-                        except Exception as e:
-                            st.write(f"    - JSON 파싱: ❌ 실패 - {str(e)}")
         
         if saved_stores:
             st.write(f"📁 **사용 가능한 벡터 스토어 ({len(saved_stores)}개):**")
             
-            # Vector store selection
-            store_options = [f"{store['store_name']} ({store.get('vector_store_type', 'unknown').upper()})" for store in saved_stores]
-            selected_store_idx = st.selectbox(
-                "로딩할 벡터 스토어 선택:",
-                options=range(len(store_options)),
-                format_func=lambda x: store_options[x],
-                key="vector_store_selector"
-            )
+            # Create detailed vector store table
+            store_data = []
+            for i, store in enumerate(saved_stores):
+                store_data.append({
+                    "이름": store['store_name'],
+                    "타입": store.get('vector_store_type', 'unknown').upper(),
+                    "문서 수": store.get('document_count', 'N/A'),
+                    "크기 (MB)": f"{store.get('file_size_mb', 0):.1f}",
+                    "임베딩 모델": store.get('embedding_model', 'N/A'),
+                    "컬렉션": store.get('collection_name', 'N/A'),
+                    "생성일": store.get('created_at', 'N/A')[:10] if store.get('created_at') else 'N/A',
+                    "생성시간": store.get('created_at', 'N/A')[11:16] if store.get('created_at') and len(store.get('created_at', '')) > 16 else 'N/A'
+                })
+            
+            if store_data:
+                df_stores = pd.DataFrame(store_data)
+                
+                # Display the table
+                st.write("### 📊 벡터 스토어 목록")
+                st.dataframe(df_stores, use_container_width=True)
+                
+                # Vector store selection
+                st.write("### 🎯 로딩할 벡터 스토어 선택")
+                store_options = [f"{store['store_name']} ({store.get('vector_store_type', 'unknown').upper()}) - {store.get('document_count', 'N/A')}개 문서" for store in saved_stores]
+                selected_store_idx = st.selectbox(
+                    "로딩할 벡터 스토어 선택:",
+                    options=range(len(store_options)),
+                    format_func=lambda x: store_options[x],
+                    key="vector_store_selector"
+                )
             
             if selected_store_idx is not None:
                 selected_store = saved_stores[selected_store_idx]
@@ -809,17 +800,36 @@ def create_vector_store_tab():
                 with col3:
                     st.metric("📄 문서 수", selected_store.get('document_count', 'N/A'))
                 
-                # Additional info
-                with st.expander("🔍 상세 정보"):
-                    st.write(f"**생성 시간:** {selected_store.get('created_at', 'N/A')[:19]}")
-                    st.write(f"**컬렉션 이름:** {selected_store.get('collection_name', 'N/A')}")
-                    st.write(f"**임베딩 모델:** {selected_store.get('embedding_model', 'N/A')}")
-                    if selected_store.get('total_characters'):
-                        st.write(f"**총 문자 수:** {selected_store['total_characters']:,}")
-                    if selected_store.get('avg_chunk_size'):
-                        st.write(f"**평균 청크 크기:** {selected_store['avg_chunk_size']:.0f}")
-                    if selected_store.get('chunk_size'):
-                        st.write(f"**청크 설정:** {selected_store['chunk_size']}/{selected_store.get('chunk_overlap', 0)}")
+                # Additional detailed info
+                with st.expander("🔍 상세 정보 및 통계"):
+                    col1, col2 = st.columns(2)
+                    
+                    with col1:
+                        st.write("**📅 생성 정보:**")
+                        st.write(f"• 생성 시간: {selected_store.get('created_at', 'N/A')[:19]}")
+                        st.write(f"• 컬렉션 이름: {selected_store.get('collection_name', 'N/A')}")
+                        st.write(f"• 저장 경로: {store_path}")
+                        
+                        st.write("**🤖 모델 정보:**")
+                        st.write(f"• 임베딩 모델: {selected_store.get('embedding_model', 'N/A')}")
+                        st.write(f"• 벡터 스토어 타입: {selected_store.get('vector_store_type', 'unknown').upper()}")
+                    
+                    with col2:
+                        st.write("**📊 데이터 통계:**")
+                        if selected_store.get('total_characters'):
+                            st.write(f"• 총 문자 수: {selected_store['total_characters']:,}")
+                        if selected_store.get('avg_chunk_size'):
+                            st.write(f"• 평균 청크 크기: {selected_store['avg_chunk_size']:.0f}")
+                        if selected_store.get('source_count'):
+                            st.write(f"• 소스 파일 수: {selected_store['source_count']}")
+                        
+                        st.write("**⚙️ 청크 설정:**")
+                        if selected_store.get('chunk_size'):
+                            st.write(f"• 청크 크기: {selected_store['chunk_size']}")
+                            st.write(f"• 청크 오버랩: {selected_store.get('chunk_overlap', 0)}")
+                
+                # Storage path info
+                st.info(f"📂 **저장 위치:** `{store_path}`")
             
                 # Load vector store button
                 if st.button("📥 벡터 스토어 로딩", type="primary"):
@@ -845,8 +855,48 @@ def create_vector_store_tab():
                             # Show loaded stats
                             stats = vector_store_manager.get_collection_stats()
                             st.write("### ✅ 로딩 완료")
-                            for key, value in stats.items():
-                                st.write(f"• **{key}**: {value}")
+                            
+                            col1, col2, col3 = st.columns(3)
+                            with col1:
+                                st.metric("📄 로딩된 문서", stats.get("document_count", "N/A"))
+                            with col2:
+                                st.metric("🔧 상태", stats.get("status", "N/A"))
+                            with col3:
+                                st.metric("🚫 텔레메트리", stats.get("telemetry_status", "N/A"))
+                            
+                            # Quick search test
+                            st.write("### 🔍 벡터 스토어 검색 테스트")
+                            
+                            col1, col2 = st.columns([3, 1])
+                            with col1:
+                                test_query = st.text_input(
+                                    "검색 테스트 쿼리:", 
+                                    placeholder="예: AI 기술의 미래 전망",
+                                    key="vector_search_test"
+                                )
+                            with col2:
+                                test_k = st.number_input("검색 수:", min_value=1, max_value=10, value=3, key="test_k")
+                            
+                            if test_query and st.button("🔍 검색 테스트 실행"):
+                                try:
+                                    with st.spinner("검색 중..."):
+                                        results = vector_store_manager.similarity_search_with_score(test_query, k=test_k)
+                                    
+                                    if results:
+                                        st.success(f"✅ {len(results)}개 결과 발견")
+                                        
+                                        for i, (doc, score) in enumerate(results):
+                                            with st.expander(f"📄 결과 {i+1} (유사도: {score:.3f})"):
+                                                st.write(f"**출처:** {doc.metadata.get('source', 'Unknown')}")
+                                                st.write(f"**페이지:** {doc.metadata.get('page_number', 'N/A')}")
+                                                st.write(f"**내용 미리보기:**")
+                                                preview = doc.page_content[:300] + "..." if len(doc.page_content) > 300 else doc.page_content
+                                                st.text(preview)
+                                    else:
+                                        st.warning("검색 결과가 없습니다.")
+                                        
+                                except Exception as e:
+                                    st.error(f"❌ 검색 테스트 실패: {str(e)}")
                             
                             st.balloons()
                     
