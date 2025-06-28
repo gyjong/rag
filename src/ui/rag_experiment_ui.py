@@ -101,6 +101,18 @@ class RAGExperimentUI:
                         telemetry_status = stats.get("telemetry_status", "비활성화")
                         st.metric("🚫 텔레메트리", telemetry_status)
                     
+                    # Show vector store sync status
+                    current_vs_id = st.session_state.get("vector_store_id")
+                    rag_vs_id = st.session_state.get("last_rag_vector_store_id")
+                    
+                    if current_vs_id and rag_vs_id:
+                        if current_vs_id == rag_vs_id:
+                            st.success("🔄 **RAG 시스템과 벡터 스토어가 동기화됨**")
+                        else:
+                            st.warning("⚠️ **벡터 스토어가 변경되었습니다.** 실험을 다시 시작하면 새로운 벡터 스토어가 적용됩니다.")
+                    else:
+                        st.info("ℹ️ **RAG 시스템이 아직 초기화되지 않았습니다.** 실험을 시작하면 현재 벡터 스토어로 초기화됩니다.")
+                    
                     # Detailed information table
                     st.write("### 📋 상세 정보")
                     
@@ -192,7 +204,27 @@ class RAGExperimentUI:
     @staticmethod
     def _initialize_rag_systems():
         """Initialize RAG systems if not already done."""
-        if not st.session_state.rag_systems:
+        # Check if vector store has changed
+        current_vector_store_id = st.session_state.get("vector_store_id")
+        last_rag_vector_store_id = st.session_state.get("last_rag_vector_store_id")
+        
+        # Get existing RAG systems safely
+        existing_rag_systems = st.session_state.get("rag_systems", {})
+        
+        # Reset RAG systems if vector store changed or if systems don't exist
+        if (not existing_rag_systems or 
+            current_vector_store_id != last_rag_vector_store_id):
+            
+            # Clear existing systems if vector store changed
+            if (current_vector_store_id != last_rag_vector_store_id and 
+                existing_rag_systems):
+                st.info("🔄 **벡터 스토어가 변경되었습니다.** RAG 시스템을 재초기화합니다.")
+                # Clear previous results safely
+                if "experiment_results" not in st.session_state:
+                    st.session_state.experiment_results = []
+                else:
+                    st.session_state.experiment_results = []
+            
             selected_model = st.session_state.get("selected_llm_model", DEFAULT_LLM_MODEL)
             llm_temperature = st.session_state.get("llm_temperature", 0.1)
             llm_manager = LLMManager(selected_model, OLLAMA_BASE_URL, temperature=llm_temperature)
@@ -204,6 +236,9 @@ class RAGExperimentUI:
                 "Advanced RAG": AdvancedRAG(vector_store_manager, llm_manager),
                 "Modular RAG": ModularRAG(vector_store_manager, llm_manager)
             }
+            
+            # Track the vector store ID used for RAG systems
+            st.session_state.last_rag_vector_store_id = current_vector_store_id
     
     @staticmethod
     def _display_experiment_interface():
@@ -211,12 +246,19 @@ class RAGExperimentUI:
         # System selection
         st.subheader("🎯 실험 설정")
         
+        # Get RAG systems safely
+        rag_systems = st.session_state.get("rag_systems", {})
+        
+        if not rag_systems:
+            st.warning("⚠️ RAG 시스템이 초기화되지 않았습니다. 벡터 스토어를 먼저 확인해주세요.")
+            return
+        
         col1, col2 = st.columns(2)
         with col1:
             selected_systems = st.multiselect(
                 "테스트할 RAG 시스템 선택:",
-                list(st.session_state.rag_systems.keys()),
-                default=list(st.session_state.rag_systems.keys())
+                list(rag_systems.keys()),
+                default=list(rag_systems.keys())
             )
         
         with col2:
@@ -298,10 +340,21 @@ class RAGExperimentUI:
         """Run the RAG experiment with selected systems."""
         results = []
         
+        # Get RAG systems safely
+        rag_systems = st.session_state.get("rag_systems", {})
+        
+        if not rag_systems:
+            st.error("❌ RAG 시스템이 초기화되지 않았습니다.")
+            return
+        
         for system_name in selected_systems:
             st.write(f"## {system_name} 실행 중...")
             
-            rag_system = st.session_state.rag_systems[system_name]
+            if system_name not in rag_systems:
+                st.error(f"❌ {system_name} 시스템을 찾을 수 없습니다.")
+                continue
+                
+            rag_system = rag_systems[system_name]
             
             try:
                 if system_name == "Advanced RAG":

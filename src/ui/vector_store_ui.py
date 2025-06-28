@@ -130,6 +130,18 @@ class VectorStoreUI:
             st.session_state.vector_store_metadata = getattr(vector_store_manager, '_metadata', {})
             st.session_state.vector_store_source = 'created'
             
+            # Generate unique vector store ID for change detection
+            import time
+            st.session_state.vector_store_id = f"created_{int(time.time())}_{len(chunks)}docs"
+            
+            # Reset RAG systems and experiments when vector store changes
+            if "rag_systems" in st.session_state:
+                st.session_state.rag_systems = {}
+            if "experiment_results" in st.session_state:
+                st.session_state.experiment_results = []
+            else:
+                st.session_state.experiment_results = []
+            
             # Display collection stats
             stats = vector_store_manager.get_collection_stats()
             st.write("### 📊 벡터 스토어 통계")
@@ -297,6 +309,20 @@ class VectorStoreUI:
                 st.session_state.vector_store_metadata = getattr(vector_store_manager, '_metadata', {})
                 st.session_state.vector_store_source = 'loaded'  # Track source
                 
+                # Generate unique vector store ID for change detection
+                import time
+                st.session_state.vector_store_id = f"loaded_{int(time.time())}_{selected_store.get('store_name', 'unknown')}"
+                
+                # Reset RAG systems and experiments when vector store changes
+                if "rag_systems" in st.session_state:
+                    st.session_state.rag_systems = {}
+                if "experiment_results" in st.session_state:
+                    st.session_state.experiment_results = []
+                else:
+                    st.session_state.experiment_results = []
+                    
+                st.info("🔄 **새로운 벡터 스토어가 로딩되었습니다.** RAG 실험이 재설정됩니다.")
+                
                 # Show loaded stats and search test
                 VectorStoreUI._display_loading_success(vector_store_manager)
                 
@@ -407,6 +433,19 @@ class VectorStoreUI:
                         st.session_state.vector_store_metadata = getattr(vector_store_manager, '_metadata', {})
                         st.session_state.vector_store_source = 'manual_loaded'
                         
+                        # Generate unique vector store ID for change detection
+                        import time
+                        st.session_state.vector_store_id = f"manual_{int(time.time())}_{manual_store_path.name}"
+                        
+                        # Reset RAG systems and experiments when vector store changes
+                        if "rag_systems" in st.session_state:
+                            st.session_state.rag_systems = {}
+                        if "experiment_results" in st.session_state:
+                            st.session_state.experiment_results = []
+                        else:
+                            st.session_state.experiment_results = []
+                            
+                        st.info("🔄 **새로운 벡터 스토어가 수동 로딩되었습니다.** RAG 실험이 재설정됩니다.")
                         st.balloons()
                         
                 except Exception as e:

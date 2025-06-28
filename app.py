@@ -57,6 +57,9 @@ def get_or_create_vector_store_manager() -> Optional[VectorStoreManager]:
                 st.session_state.vector_store_metadata = {}
             if "vector_store_source" not in st.session_state:
                 st.session_state.vector_store_source = "auto_created"
+            if "vector_store_id" not in st.session_state:
+                import time
+                st.session_state.vector_store_id = f"auto_{int(time.time())}"
             
         except Exception as e:
             st.error(f"❌ 벡터 스토어 매니저 초기화 실패: {str(e)}")
