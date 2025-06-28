@@ -5,7 +5,6 @@ import time
 import re
 import numpy as np
 import streamlit as st
-import pandas as pd
 from langchain_core.documents import Document
 from enum import Enum
 
@@ -26,77 +25,144 @@ class BM25:
         """
         self.k1 = k1
         self.b = b
-        self.corpus = corpus
-        self.corpus_size = len(corpus)
+        self.corpus = corpus if corpus else []
+        self.corpus_size = len(self.corpus)
         
-        # Tokenize and process corpus
-        self.doc_tokens = [self._tokenize(doc) for doc in corpus]
-        self.doc_len = [len(tokens) for tokens in self.doc_tokens]
-        self.avgdl = sum(self.doc_len) / self.corpus_size if self.corpus_size > 0 else 0
+        if self.corpus_size == 0:
+            # Initialize empty structures for empty corpus
+            self.doc_tokens = []
+            self.doc_len = []
+            self.avgdl = 0
+            self.vocab = []
+            self.df = {}
+            self.idf = {}
+            return
         
-        # Build vocabulary and document frequency
-        self.vocab = set()
-        for tokens in self.doc_tokens:
-            self.vocab.update(tokens)
-        self.vocab = list(self.vocab)
-        
-        # Calculate document frequencies
-        self.df = {}
-        for term in self.vocab:
-            self.df[term] = sum(1 for tokens in self.doc_tokens if term in tokens)
-        
-        # Pre-compute IDF scores
-        self.idf = {}
-        for term in self.vocab:
-            self.idf[term] = np.log((self.corpus_size - self.df[term] + 0.5) / (self.df[term] + 0.5))
+        try:
+            # Tokenize and process corpus
+            self.doc_tokens = []
+            for i, doc in enumerate(self.corpus):
+                try:
+                    tokens = self._tokenize(doc) if doc else []
+                    self.doc_tokens.append(tokens)
+                except Exception as e:
+                    # Skip problematic documents
+                    self.doc_tokens.append([])
+                    
+            self.doc_len = [len(tokens) for tokens in self.doc_tokens]
+            self.avgdl = sum(self.doc_len) / self.corpus_size if self.corpus_size > 0 else 0
+            
+            # Build vocabulary and document frequency
+            self.vocab = set()
+            for tokens in self.doc_tokens:
+                if tokens:  # Only process non-empty token lists
+                    self.vocab.update(tokens)
+            self.vocab = list(self.vocab)
+            
+            # Calculate document frequencies
+            self.df = {}
+            for term in self.vocab:
+                self.df[term] = sum(1 for tokens in self.doc_tokens if term in tokens)
+            
+            # Pre-compute IDF scores
+            self.idf = {}
+            for term in self.vocab:
+                # Safe IDF calculation to avoid division by zero
+                df_term = self.df.get(term, 0)
+                if df_term > 0:
+                    self.idf[term] = np.log((self.corpus_size - df_term + 0.5) / (df_term + 0.5))
+                else:
+                    self.idf[term] = 0.0
+                    
+        except Exception as e:
+            # If initialization fails, create minimal working state
+            self.doc_tokens = [[] for _ in range(self.corpus_size)]
+            self.doc_len = [0] * self.corpus_size
+            self.avgdl = 0
+            self.vocab = []
+            self.df = {}
+            self.idf = {}
+            raise ValueError(f"BM25 초기화 실패: {str(e)}")
     
     def _tokenize(self, text: str) -> List[str]:
         """Simple tokenization (can be enhanced with proper NLP tokenizer)."""
-        # Basic tokenization: lowercase, remove punctuation, split by spaces
-        text = text.lower()
-        text = re.sub(r'[^\w\s가-힣]', ' ', text)  # Keep Korean characters
-        tokens = text.split()
-        # Filter short tokens
-        tokens = [token for token in tokens if len(token) > 1]
-        return tokens
+        if not text or not isinstance(text, str):
+            return []
+            
+        try:
+            # Basic tokenization: lowercase, remove punctuation, split by spaces
+            text = text.lower()
+            text = re.sub(r'[^\w\s가-힣]', ' ', text)  # Keep Korean characters
+            tokens = text.split()
+            # Filter short tokens
+            tokens = [token for token in tokens if len(token) > 1]
+            return tokens
+        except Exception as e:
+            # Return empty list if tokenization fails
+            return []
     
     def get_scores(self, query: str) -> List[float]:
         """Calculate BM25 scores for query against all documents."""
-        query_tokens = self._tokenize(query)
-        scores = []
-        
-        for i, doc_tokens in enumerate(self.doc_tokens):
-            score = 0.0
-            doc_len = self.doc_len[i]
+        if not query or not isinstance(query, str):
+            return [0.0] * self.corpus_size
             
-            # Count term frequencies in document
-            tf = {}
-            for token in doc_tokens:
-                tf[token] = tf.get(token, 0) + 1
+        if self.corpus_size == 0 or not self.doc_tokens:
+            return []
             
-            # Calculate BM25 score
-            for term in query_tokens:
-                if term in tf:
-                    # TF component
-                    tf_component = tf[term] * (self.k1 + 1)
-                    tf_component /= (tf[term] + self.k1 * (1 - self.b + self.b * doc_len / self.avgdl))
-                    
-                    # IDF component
-                    idf_component = self.idf.get(term, 0)
-                    
-                    score += tf_component * idf_component
+        try:
+            query_tokens = self._tokenize(query)
+            if not query_tokens:
+                return [0.0] * self.corpus_size
+                
+            scores = []
             
-            scores.append(score)
-        
-        return scores
+            for i, doc_tokens in enumerate(self.doc_tokens):
+                score = 0.0
+                doc_len = self.doc_len[i] if i < len(self.doc_len) else 0
+                
+                if doc_len == 0:
+                    scores.append(0.0)
+                    continue
+                
+                # Count term frequencies in document
+                tf = {}
+                for token in doc_tokens:
+                    tf[token] = tf.get(token, 0) + 1
+                
+                # Calculate BM25 score
+                for term in query_tokens:
+                    if term in tf and term in self.idf:
+                        # TF component
+                        tf_component = tf[term] * (self.k1 + 1)
+                        tf_component /= (tf[term] + self.k1 * (1 - self.b + self.b * doc_len / max(self.avgdl, 1)))
+                        
+                        # IDF component
+                        idf_component = self.idf.get(term, 0)
+                        
+                        score += tf_component * idf_component
+                
+                scores.append(score)
+            
+            return scores
+            
+        except Exception as e:
+            # Return zero scores if calculation fails
+            return [0.0] * self.corpus_size
     
     def get_top_k(self, query: str, k: int = 5) -> List[Tuple[int, float]]:
         """Get top-k documents with scores."""
-        scores = self.get_scores(query)
-        # Get indices and scores, sort by score (descending)
-        scored_docs = [(i, score) for i, score in enumerate(scores)]
-        scored_docs.sort(key=lambda x: x[1], reverse=True)
-        return scored_docs[:k]
+        try:
+            scores = self.get_scores(query)
+            if not scores:
+                return []
+                
+            # Get indices and scores, sort by score (descending)
+            scored_docs = [(i, score) for i, score in enumerate(scores)]
+            scored_docs.sort(key=lambda x: x[1], reverse=True)
+            return scored_docs[:k]
+            
+        except Exception as e:
+            return []
 
 
 class ModuleType(Enum):
@@ -134,9 +200,13 @@ class ModularRAG:
             
         # Check if we have a cached index in session state
         if "bm25_index" in st.session_state and "bm25_documents" in st.session_state:
-            self.bm25_index = st.session_state.bm25_index
-            self.bm25_documents = st.session_state.bm25_documents
-            return
+            try:
+                self.bm25_index = st.session_state.bm25_index
+                self.bm25_documents = st.session_state.bm25_documents
+                return
+            except Exception as e:
+                st.warning(f"⚠️ 캐시된 BM25 인덱스 로딩 실패: {str(e)}")
+                # Continue to create new index
         
         vector_store = self.vector_store_manager.get_vector_store()
         if vector_store is None:
@@ -157,18 +227,28 @@ class ModularRAG:
                 corpus = [doc.page_content for doc in sample_docs]
                 self.bm25_documents = sample_docs
                 
-                # Create BM25 index
-                self.bm25_index = BM25(corpus)
+                # Create BM25 index with error handling
+                try:
+                    self.bm25_index = BM25(corpus)
+                except Exception as bm25_error:
+                    st.error(f"❌ BM25 인덱스 생성 중 오류: {str(bm25_error)}")
+                    return
                 
                 # Cache in session state
-                st.session_state.bm25_index = self.bm25_index
-                st.session_state.bm25_documents = self.bm25_documents
+                try:
+                    st.session_state.bm25_index = self.bm25_index
+                    st.session_state.bm25_documents = self.bm25_documents
+                except Exception as cache_error:
+                    st.warning(f"⚠️ BM25 인덱스 캐싱 실패: {str(cache_error)}")
+                    # Continue without caching
                 
                 st.success(f"✅ BM25 인덱스 생성 완료! ({len(corpus)}개 문서 인덱싱)")
                 
         except Exception as e:
             st.error(f"❌ BM25 인덱스 생성 실패: {str(e)}")
-        
+            self.bm25_index = None
+            self.bm25_documents = []
+    
     def _setup_modules(self):
         """Setup default modules for the system."""
         self.modules = {
@@ -302,12 +382,17 @@ class ModularRAG:
                 "primary": ["얼마", "how much", "how many", "수량", "개수", "비율"],
                 "secondary": ["퍼센트", "percent", "%", "통계", "statistics", "수치"],
                 "weight": 1.0
+            },
+            "general": {
+                "primary": ["일반적", "전반적", "전체적", "overall", "general"],
+                "secondary": ["관련", "대해", "about", "설명", "알려", "정보"],
+                "weight": 0.8
             }
         }
         
         # Calculate scores for each query type
         type_scores = {}
-        matched_keywords = {}
+        matched_keywords = {q_type: [] for q_type in classification_patterns.keys()}
         
         for q_type, patterns in classification_patterns.items():
             score = 0.0
@@ -347,7 +432,7 @@ class ModularRAG:
         classification_data = []
         for q_type, score in type_scores.items():
             status = "✅ 선택됨" if q_type == query_type else ""
-            keywords_str = ", ".join(matched_keywords[q_type]) if matched_keywords[q_type] else "매칭 없음"
+            keywords_str = ", ".join(matched_keywords.get(q_type, [])) if matched_keywords.get(q_type, []) else "매칭 없음"
             
             classification_data.append({
                 "유형": q_type,
@@ -359,9 +444,10 @@ class ModularRAG:
         # Sort by score
         classification_data.sort(key=lambda x: float(x["점수"]), reverse=True)
         
-        import pandas as pd
-        df = pd.DataFrame(classification_data)
-        st.dataframe(df, use_container_width=True)
+        # Display classification table
+        st.write("**분류 결과:**")
+        for item in classification_data:
+            st.write(f"- **{item['유형']}**: {item['점수']} ({item['매칭 키워드']}) {item['상태']}")
         
         # Show confidence meter
         col1, col2 = st.columns([3, 1])
@@ -393,7 +479,7 @@ class ModularRAG:
             "query_type": query_type,
             "confidence": confidence,
             "all_scores": type_scores,
-            "matched_keywords": matched_keywords[query_type],
+            "matched_keywords": matched_keywords.get(query_type, []),
             "classification_details": classification_data
         }
     
@@ -416,7 +502,16 @@ class ModularRAG:
         st.write("**🔍 BM25 키워드 검색:**")
         
         # Initialize BM25 index if not already done
-        self._initialize_bm25_index()
+        try:
+            self._initialize_bm25_index()
+        except Exception as e:
+            st.error(f"❌ BM25 인덱스 초기화 실패: {str(e)}")
+            # Fallback to vector search
+            vector_store = self.vector_store_manager.get_vector_store()
+            if vector_store:
+                k = context.get("retrieval_k", 5)
+                return vector_store.similarity_search(query, k=k)
+            return []
         
         if self.bm25_index is None or not self.bm25_documents:
             st.warning("⚠️ BM25 인덱스가 없어 벡터 검색으로 대체합니다.")
@@ -454,8 +549,10 @@ class ModularRAG:
             # Display search results
             if search_results:
                 st.write("**📊 BM25 검색 결과:**")
-                df = pd.DataFrame(search_results)
-                st.dataframe(df, use_container_width=True)
+                
+                # Display search results as simple text
+                for result in search_results:
+                    st.write(f"**{result['순위']}위** (점수: {result['BM25 점수']}) - {result['문서 출처']}")
                 
                 # Search statistics
                 col1, col2, col3, col4 = st.columns(4)
@@ -466,11 +563,15 @@ class ModularRAG:
                 with col3:
                     st.metric("최고 점수", f"{top_docs[0][1]:.3f}" if top_docs else "0.000")
                 with col4:
-                    st.metric("평균 점수", f"{np.mean([score for _, score in top_docs]):.3f}" if top_docs else "0.000")
+                    avg_score = np.mean([score for _, score in top_docs]) if top_docs else 0.0
+                    st.metric("평균 점수", f"{avg_score:.3f}")
                 
                 # Query analysis
-                query_tokens = self.bm25_index._tokenize(query)
-                st.info(f"**분석된 쿼리 토큰:** {', '.join(query_tokens)}")
+                try:
+                    query_tokens = self.bm25_index._tokenize(query)
+                    st.info(f"**분석된 쿼리 토큰:** {', '.join(query_tokens)}")
+                except Exception as e:
+                    st.info(f"**검색 쿼리:** {query}")
                 
                 # Show detailed results for top documents
                 with st.expander(f"🔍 상위 {min(3, len(retrieved_docs))}개 문서 상세보기"):
@@ -608,7 +709,18 @@ class ModularRAG:
         }
         
         # Get prompt configuration for current query type
-        prompt_config = prompt_templates.get(query_type, prompt_templates["general"])
+        try:
+            prompt_config = prompt_templates.get(query_type, prompt_templates["general"])
+        except KeyError:
+            # Fallback to default general template if there's any issue
+            prompt_config = {
+                "instruction": "종합적이고 포괄적으로 답변해주세요.",
+                "system_prompt": """다음 컨텍스트를 바탕으로 종합적으로 답변해주세요.
+- 다양한 관점에서 설명하세요
+- 전체적인 개요부터 세부사항까지 포함하세요
+- 균형있고 포괄적인 정보를 제공하세요""",
+                "style": "종합적 설명"
+            }
         
         # Display answer generation strategy
         st.write("**🤖 답변 생성 전략:**")
@@ -635,13 +747,17 @@ class ModularRAG:
         start_time = time.time()
         full_response = ""
         
-        # Stream the response with enhanced prompt
-        for chunk in self.llm_manager.generate_response_stream(
-            prompt=enhanced_prompt,
-            context=""  # Context already included in enhanced_prompt
-        ):
-            full_response += chunk
-            answer_placeholder.markdown(full_response + "▌")
+        try:
+            # Stream the response with enhanced prompt
+            for chunk in self.llm_manager.generate_response_stream(
+                prompt=enhanced_prompt,
+                context=""  # Context already included in enhanced_prompt
+            ):
+                full_response += chunk
+                answer_placeholder.markdown(full_response + "▌")
+        except Exception as e:
+            st.error(f"❌ LLM 응답 생성 실패: {str(e)}")
+            full_response = f"답변 생성 중 오류가 발생했습니다: {str(e)}"
         
         generation_time = time.time() - start_time
         answer_placeholder.markdown(full_response)
@@ -714,108 +830,183 @@ class ModularRAG:
             "max_context_length": 3500
         }
         
-        st.subheader("🧩 모듈형 RAG 처리 과정")
-        
-        # Step 1: Pre-retrieval processing
-        st.write("**1단계: 사전 검색 처리**")
-        
-        # Query expansion
-        expansion_result = self._query_expansion_module(question, context)
-        context.update(expansion_result)
-        if expansion_result["expansion_terms"]:
-            st.info(f"쿼리 확장: {expansion_result['expanded_query']}")
-        
-        # Query classification
-        classification_result = self._query_classification_module(question, context)
-        context.update(classification_result)
-        st.info(f"쿼리 유형: {classification_result['query_type']}")
-        
-        # Routing
-        processing_path = self._routing_module(question, context)
-        context["processing_path"] = processing_path
-        st.info(f"처리 경로: {processing_path}")
-        
-        final_answer = ""
-        all_retrieved_docs = []
-        
-        # Iterative processing
-        while context["iteration_count"] < max_iterations:
-            iteration = context["iteration_count"] + 1
-            st.write(f"**반복 {iteration}:**")
+        try:
+            st.subheader("🧩 모듈형 RAG 처리 과정")
             
-            # Step 2: Retrieval
-            with st.spinner("문서 검색 중..."):
-                query_to_use = context.get("expanded_query", question)
+            # Step 1: Pre-retrieval processing
+            st.write("**1단계: 사전 검색 처리**")
+            
+            # Query expansion
+            try:
+                expansion_result = self._query_expansion_module(question, context)
+                context.update(expansion_result)
+                if expansion_result["expansion_terms"]:
+                    st.info(f"쿼리 확장: {expansion_result['expanded_query']}")
+            except Exception as e:
+                st.error(f"❌ 쿼리 확장 실패: {str(e)}")
+                expansion_result = {"expansion_terms": [], "expanded_query": question}
+                context.update(expansion_result)
+            
+            # Query classification
+            try:
+                classification_result = self._query_classification_module(question, context)
+                context.update(classification_result)
+                st.info(f"쿼리 유형: {classification_result['query_type']}")
+            except Exception as e:
+                st.error(f"❌ 쿼리 분류 실패: {str(e)}")
+                classification_result = {"query_type": "general", "confidence": 0.5}
+                context.update(classification_result)
+            
+            # Routing
+            try:
+                processing_path = self._routing_module(question, context)
+                context["processing_path"] = processing_path
+                st.info(f"처리 경로: {processing_path}")
+            except Exception as e:
+                st.error(f"❌ 라우팅 실패: {str(e)}")
+                context["processing_path"] = "standard_path"
+            
+            final_answer = ""
+            all_retrieved_docs = []
+            
+            # Iterative processing
+            while context["iteration_count"] < max_iterations:
+                iteration = context["iteration_count"] + 1
+                st.write(f"**반복 {iteration}:**")
                 
-                # Combine semantic and keyword retrieval
-                semantic_docs = self._semantic_retrieval_module(query_to_use, context)
-                keyword_docs = self._keyword_retrieval_module(query_to_use, context)
+                # Step 2: Retrieval
+                try:
+                    with st.spinner("문서 검색 중..."):
+                        query_to_use = context.get("expanded_query", question)
+                        
+                        # Combine semantic and keyword retrieval
+                        try:
+                            semantic_docs = self._semantic_retrieval_module(query_to_use, context)
+                        except Exception as e:
+                            st.warning(f"⚠️ 의미적 검색 실패: {str(e)}")
+                            semantic_docs = []
+                        
+                        try:
+                            keyword_docs = self._keyword_retrieval_module(query_to_use, context)
+                        except Exception as e:
+                            st.warning(f"⚠️ 키워드 검색 실패: {str(e)}")
+                            keyword_docs = []
+                        
+                        # Merge and deduplicate
+                        all_docs = semantic_docs + keyword_docs
+                        seen_content = set()
+                        unique_docs = []
+                        for doc in all_docs:
+                            content_hash = hash(doc.page_content[:100])
+                            if content_hash not in seen_content:
+                                unique_docs.append(doc)
+                                seen_content.add(content_hash)
+                        
+                        st.success(f"검색 완료: {len(unique_docs)}개 문서")
+                except Exception as e:
+                    st.error(f"❌ 문서 검색 단계 실패: {str(e)}")
+                    unique_docs = []
                 
-                # Merge and deduplicate
-                all_docs = semantic_docs + keyword_docs
-                seen_content = set()
-                unique_docs = []
-                for doc in all_docs:
-                    content_hash = hash(doc.page_content[:100])
-                    if content_hash not in seen_content:
-                        unique_docs.append(doc)
-                        seen_content.add(content_hash)
+                # Step 3: Post-retrieval processing
+                try:
+                    filtered_docs = self._relevance_filtering_module(unique_docs, context)
+                    diverse_docs = self._diversity_module(filtered_docs, context)
+                    all_retrieved_docs.extend(diverse_docs)
+                    
+                    st.info(f"후처리 완료: {len(diverse_docs)}개 문서 선택")
+                except Exception as e:
+                    st.error(f"❌ 후처리 실패: {str(e)}")
+                    diverse_docs = unique_docs[:5]  # Fallback
+                    all_retrieved_docs.extend(diverse_docs)
                 
-                st.success(f"검색 완료: {len(unique_docs)}개 문서")
-            
-            # Step 3: Post-retrieval processing
-            filtered_docs = self._relevance_filtering_module(unique_docs, context)
-            diverse_docs = self._diversity_module(filtered_docs, context)
-            all_retrieved_docs.extend(diverse_docs)
-            
-            st.info(f"후처리 완료: {len(diverse_docs)}개 문서 선택")
-            
-            # Step 4: Generation
-            with st.spinner("답변 생성 중..."):
-                answer = self._answer_generation_module(question, diverse_docs, context)
+                # Step 4: Generation
+                try:
+                    with st.spinner("답변 생성 중..."):
+                        answer = self._answer_generation_module(question, diverse_docs, context)
+                except Exception as e:
+                    st.error(f"❌ 답변 생성 실패: {str(e)}")
+                    answer = f"답변 생성 중 오류가 발생했습니다: {str(e)}"
                 
-            # Step 5: Confidence estimation
-            confidence = self._confidence_estimation_module(answer, context)
-            context["confidence"] = confidence
-            context["iteration_count"] = iteration
+                # Step 5: Confidence estimation
+                try:
+                    confidence = self._confidence_estimation_module(answer, context)
+                    context["confidence"] = confidence
+                    context["iteration_count"] = iteration
+                    
+                    st.info(f"신뢰도: {confidence:.2f}")
+                except Exception as e:
+                    st.error(f"❌ 신뢰도 평가 실패: {str(e)}")
+                    confidence = 0.5
+                    context["confidence"] = confidence
+                    context["iteration_count"] = iteration
+                
+                # Check if we should continue iterating
+                try:
+                    should_continue = self._iteration_control_module(context)
+                    if not should_continue:
+                        final_answer = answer
+                        break
+                    else:
+                        st.warning(f"신뢰도가 낮아 다음 반복을 시도합니다 (신뢰도: {confidence:.2f})")
+                        # Adjust parameters for next iteration
+                        context["retrieval_k"] = min(context["retrieval_k"] + 2, 15)
+                        final_answer = answer
+                except Exception as e:
+                    st.error(f"❌ 반복 제어 실패: {str(e)}")
+                    final_answer = answer
+                    break
             
-            st.info(f"신뢰도: {confidence:.2f}")
+            # Display final results
+            try:
+                with st.expander(f"최종 검색된 문서 ({len(all_retrieved_docs)}개)"):
+                    for i, doc in enumerate(all_retrieved_docs[-5:]):  # Show last 5
+                        st.write(f"**문서 {i+1}:**")
+                        st.write(f"출처: {doc.metadata.get('source', 'Unknown')}")
+                        st.write(f"내용: {doc.page_content[:200]}...")
+                        st.divider()
+            except Exception as e:
+                st.warning(f"⚠️ 최종 결과 표시 실패: {str(e)}")
             
-            # Check if we should continue iterating
-            if not self._iteration_control_module(context):
-                final_answer = answer
-                break
-            else:
-                st.warning(f"신뢰도가 낮아 다음 반복을 시도합니다 (신뢰도: {confidence:.2f})")
-                # Adjust parameters for next iteration
-                context["retrieval_k"] = min(context["retrieval_k"] + 2, 15)
-                final_answer = answer
-        
-        # Display final results
-        with st.expander(f"최종 검색된 문서 ({len(all_retrieved_docs)}개)"):
-            for i, doc in enumerate(all_retrieved_docs[-5:]):  # Show last 5
-                st.write(f"**문서 {i+1}:**")
-                st.write(f"출처: {doc.metadata.get('source', 'Unknown')}")
-                st.write(f"내용: {doc.page_content[:200]}...")
-                st.divider()
-        
-        total_time = time.time() - start_time
-        
-        return {
-            "question": question,
-            "answer": final_answer,
-            "retrieved_docs": all_retrieved_docs,
-            "total_time": total_time,
-            "rag_type": self.name,
-            "metadata": {
-                "iterations": context["iteration_count"],
-                "final_confidence": context.get("confidence", 0.0),
-                "query_type": context.get("query_type", "general"),
-                "processing_path": context.get("processing_path", "standard"),
-                "total_retrieved": len(all_retrieved_docs),
-                "expansion_terms": context.get("expansion_terms", [])
+            total_time = time.time() - start_time
+            
+            return {
+                "question": question,
+                "answer": final_answer,
+                "retrieved_docs": all_retrieved_docs,
+                "total_time": total_time,
+                "rag_type": self.name,
+                "metadata": {
+                    "iterations": context["iteration_count"],
+                    "final_confidence": context.get("confidence", 0.0),
+                    "query_type": context.get("query_type", "general"),
+                    "processing_path": context.get("processing_path", "standard"),
+                    "total_retrieved": len(all_retrieved_docs),
+                    "expansion_terms": context.get("expansion_terms", [])
+                }
             }
-        }
+            
+        except Exception as e:
+            # Top-level error handling
+            total_time = time.time() - start_time
+            error_message = f"Modular RAG 처리 중 심각한 오류 발생: {str(e)}"
+            st.error(f"❌ {error_message}")
+            
+            return {
+                "question": question,
+                "answer": error_message,
+                "retrieved_docs": [],
+                "total_time": total_time,
+                "rag_type": self.name,
+                "metadata": {
+                    "iterations": 0,
+                    "final_confidence": 0.0,
+                    "query_type": "error",
+                    "processing_path": "error",
+                    "total_retrieved": 0,
+                    "expansion_terms": [],
+                    "error": str(e)
+                }
+            }
     
     def get_system_info(self) -> Dict[str, Any]:
         """Get information about the Modular RAG system."""

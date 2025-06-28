@@ -6,6 +6,8 @@ from pathlib import Path
 import base64
 import pandas as pd
 from datetime import datetime
+import json
+from typing import Optional
 
 # Disable ChromaDB telemetry at app startup to prevent telemetry errors
 os.environ["ANONYMIZED_TELEMETRY"] = "False"
@@ -31,6 +33,33 @@ def load_custom_font():
     return apply_custom_css()
 
 
+def get_or_create_vector_store_manager() -> Optional[VectorStoreManager]:
+    """Get or create vector store manager with lazy loading.
+    
+    Returns:
+        VectorStoreManager instance or None if creation fails
+    """
+    if "vector_store_manager" not in st.session_state:
+        try:
+            # Initialize embeddings lazily
+            embedding_manager = EmbeddingManager(EMBEDDING_MODEL, MODELS_FOLDER)
+            embeddings = embedding_manager.get_embeddings()
+            
+            # Initialize vector store manager
+            st.session_state.vector_store_manager = VectorStoreManager(
+                embeddings=embeddings,
+                vector_store_type=st.session_state.get("vector_store_type", "faiss"),
+                collection_name="rag_documents"
+            )
+            st.session_state.embedding_manager = embedding_manager
+            
+        except Exception as e:
+            st.error(f"❌ 벡터 스토어 매니저 초기화 실패: {str(e)}")
+            return None
+    
+    return st.session_state.get("vector_store_manager")
+
+
 def initialize_session_state():
     """Initialize session state variables."""
     if "documents_loaded" not in st.session_state:
@@ -45,6 +74,7 @@ def initialize_session_state():
         st.session_state.documents = []
     if "document_chunks" not in st.session_state:
         st.session_state.document_chunks = []
+    # vector_store_manager는 지연 로딩으로 처리 (필요할 때만 생성)
 
 
 def setup_page():
@@ -511,110 +541,141 @@ def create_vector_store_tab():
         
         if not st.session_state.documents_loaded:
             st.warning("⚠️ 먼저 문서를 로딩해주세요.")
-            return
-        
-        # Display current document info
-        chunks = st.session_state.document_chunks
-        col1, col2, col3, col4 = st.columns(4)
-        with col1:
-            st.metric("🧩 총 청크", len(chunks))
-        with col2:
-            avg_size = sum(len(chunk.page_content) for chunk in chunks) / len(chunks)
-            st.metric("📏 평균 크기", f"{avg_size:.0f}")
-        with col3:
-            sources = set(chunk.metadata.get('source', 'Unknown') for chunk in chunks)
-            st.metric("📚 소스 수", len(sources))
-        with col4:
-            total_chars = sum(len(chunk.page_content) for chunk in chunks)
-            st.metric("📝 총 문자", f"{total_chars:,}")
-        
-        st.info(f"🤖 임베딩 모델: {EMBEDDING_MODEL}")
-        
-        # Vector store creation options
-        st.write("### ⚙️ 벡터 스토어 설정")
-        
-        col1, col2 = st.columns(2)
-        with col1:
-            # Vector store type (from sidebar setting)
-            vector_store_type = st.session_state.get("vector_store_type", "chroma")
-            st.write(f"**벡터 스토어 타입:** {vector_store_type.upper()}")
-            st.write(f"**컬렉션 이름:** {COLLECTION_NAME}")
+            st.info("**📚 문서 로딩** 탭에서 PDF를 로딩하거나 JSON에서 문서를 불러와주세요.")
+        else:
+            # Display current document info
+            chunks = st.session_state.document_chunks
+            col1, col2, col3, col4 = st.columns(4)
+            with col1:
+                st.metric("🧩 총 청크", len(chunks))
+            with col2:
+                avg_size = sum(len(chunk.page_content) for chunk in chunks) / len(chunks)
+                st.metric("📏 평균 크기", f"{avg_size:.0f}")
+            with col3:
+                sources = set(chunk.metadata.get('source', 'Unknown') for chunk in chunks)
+                st.metric("📚 소스 수", len(sources))
+            with col4:
+                total_chars = sum(len(chunk.page_content) for chunk in chunks)
+                st.metric("📝 총 문자", f"{total_chars:,}")
             
-        with col2:
-            # Save options
-            save_vector_store = st.checkbox("💾 벡터 스토어 저장", value=True)
-            if save_vector_store:
-                store_name = st.text_input(
-                    "벡터 스토어 이름:", 
-                    value=f"vectorstore_{vector_store_type}_{datetime.now().strftime('%Y%m%d_%H%M')}"
-                )
-        
-        # Create vector store button
-        if st.button("🚀 벡터 스토어 생성 시작", type="primary"):
-            try:
-                # Initialize embedding manager with models folder
-                embedding_manager = EmbeddingManager(EMBEDDING_MODEL, MODELS_FOLDER)
-                embeddings = embedding_manager.get_embeddings()
+            st.info(f"🤖 임베딩 모델: {EMBEDDING_MODEL}")
+            
+            # Vector store creation options
+            st.write("### ⚙️ 벡터 스토어 설정")
+            
+            col1, col2 = st.columns(2)
+            with col1:
+                # Vector store type (from sidebar setting)
+                vector_store_type = st.session_state.get("vector_store_type", "chroma")
+                st.write(f"**벡터 스토어 타입:** {vector_store_type.upper()}")
+                st.write(f"**컬렉션 이름:** {COLLECTION_NAME}")
                 
-                # Display embedding model info
-                embed_info = embedding_manager.get_model_info()
-                with st.expander("🤖 임베딩 모델 정보"):
-                    for key, value in embed_info.items():
-                        st.write(f"• **{key}**: {value}")
-                
-                # Create vector store manager
-                vector_store_manager = VectorStoreManager(
-                    embeddings, 
-                    vector_store_type=vector_store_type,
-                    collection_name=COLLECTION_NAME
-                )
-                
-                # Create vector store
-                vector_store = vector_store_manager.create_vector_store(chunks)
-                
-                # Store in session state
-                st.session_state.vector_store_manager = vector_store_manager
-                st.session_state.embedding_manager = embedding_manager
-                st.session_state.vector_store_created = True
-                
-                # Display collection stats
-                stats = vector_store_manager.get_collection_stats()
-                st.write("### 📊 벡터 스토어 통계")
-                col1, col2, col3 = st.columns(3)
-                with col1:
-                    st.metric("📄 문서 수", stats.get("document_count", "N/A"))
-                with col2:
-                    st.metric("🔧 상태", stats.get("status", "N/A"))
-                with col3:
-                    st.metric("🚫 텔레메트리", stats.get("telemetry_status", "N/A"))
-                
-                # Save vector store if requested
-                if save_vector_store and store_name:
-                    store_path = VECTOR_STORES_FOLDER / store_name
+            with col2:
+                # Save options
+                save_vector_store = st.checkbox("💾 벡터 스토어 저장", value=True)
+                if save_vector_store:
+                    store_name = st.text_input(
+                        "벡터 스토어 이름:", 
+                        value=f"vectorstore_{vector_store_type}_{datetime.now().strftime('%Y%m%d_%H%M')}"
+                    )
+            
+            # Create vector store button
+            if st.button("🚀 벡터 스토어 생성 시작", type="primary"):
+                try:
+                    # Initialize embedding manager with models folder
+                    embedding_manager = EmbeddingManager(EMBEDDING_MODEL, MODELS_FOLDER)
+                    embeddings = embedding_manager.get_embeddings()
                     
-                    # Prepare metadata
-                    metadata = {
-                        "document_count": len(chunks),
-                        "total_characters": total_chars,
-                        "source_count": len(sources),
-                        "avg_chunk_size": avg_size,
-                        "embedding_model": EMBEDDING_MODEL,
-                        "chunk_size": st.session_state.get("chunk_size", CHUNK_SIZE),
-                        "chunk_overlap": st.session_state.get("chunk_overlap", CHUNK_OVERLAP)
-                    }
+                    # Display embedding model info
+                    embed_info = embedding_manager.get_model_info()
+                    with st.expander("🤖 임베딩 모델 정보"):
+                        for key, value in embed_info.items():
+                            st.write(f"• **{key}**: {value}")
                     
-                    success = vector_store_manager.save_vector_store(store_path, metadata)
-                    if success:
-                        st.balloons()
-                
-            except Exception as e:
-                st.error(f"❌ 벡터 스토어 생성 실패: {str(e)}")
+                    # Create vector store manager
+                    vector_store_manager = VectorStoreManager(
+                        embeddings, 
+                        vector_store_type=vector_store_type,
+                        collection_name=COLLECTION_NAME
+                    )
+                    
+                    # Create vector store
+                    vector_store = vector_store_manager.create_vector_store(chunks)
+                    
+                    # Store in session state
+                    st.session_state.vector_store_manager = vector_store_manager
+                    st.session_state.embedding_manager = embedding_manager
+                    st.session_state.vector_store_created = True
+                    
+                    # Display collection stats
+                    stats = vector_store_manager.get_collection_stats()
+                    st.write("### 📊 벡터 스토어 통계")
+                    col1, col2, col3 = st.columns(3)
+                    with col1:
+                        st.metric("📄 문서 수", stats.get("document_count", "N/A"))
+                    with col2:
+                        st.metric("🔧 상태", stats.get("status", "N/A"))
+                    with col3:
+                        st.metric("🚫 텔레메트리", stats.get("telemetry_status", "N/A"))
+                    
+                    # Save vector store if requested
+                    if save_vector_store and store_name:
+                        store_path = VECTOR_STORES_FOLDER / store_name
+                        
+                        # Prepare metadata
+                        metadata = {
+                            "document_count": len(chunks),
+                            "total_characters": total_chars,
+                            "source_count": len(sources),
+                            "avg_chunk_size": avg_size,
+                            "embedding_model": EMBEDDING_MODEL,
+                            "chunk_size": st.session_state.get("chunk_size", CHUNK_SIZE),
+                            "chunk_overlap": st.session_state.get("chunk_overlap", CHUNK_OVERLAP)
+                        }
+                        
+                        success = vector_store_manager.save_vector_store(store_path, metadata)
+                        if success:
+                            st.balloons()
+                    
+                except Exception as e:
+                    st.error(f"❌ 벡터 스토어 생성 실패: {str(e)}")
     
     with tab2:
         st.write("### 📥 기존 벡터 스토어에서 로딩")
         
+        # Debug: Show folder path and check existence
+        st.write(f"**🔍 디버그 정보:**")
+        st.write(f"- 벡터 스토어 폴더: `{VECTOR_STORES_FOLDER}`")
+        st.write(f"- 폴더 존재 여부: {VECTOR_STORES_FOLDER.exists()}")
+        
+        if VECTOR_STORES_FOLDER.exists():
+            all_items = list(VECTOR_STORES_FOLDER.iterdir())
+            st.write(f"- 폴더 내 항목 수: {len(all_items)}")
+            for item in all_items:
+                st.write(f"  - {'[DIR]' if item.is_dir() else '[FILE]'} {item.name}")
+        
         # List available vector stores
         saved_stores = VectorStoreManager.list_saved_vector_stores(VECTOR_STORES_FOLDER)
+        st.write(f"- **감지된 벡터 스토어 수: {len(saved_stores)}**")
+        
+        # Debug: Show individual store info
+        if VECTOR_STORES_FOLDER.exists():
+            st.write("**📋 개별 스토어 분석:**")
+            for item in VECTOR_STORES_FOLDER.iterdir():
+                if item.is_dir():
+                    metadata_path = item / "metadata.json"
+                    st.write(f"  - **{item.name}**:")
+                    st.write(f"    - metadata.json 존재: {metadata_path.exists()}")
+                    if metadata_path.exists():
+                        try:
+                            import json
+                            with open(metadata_path, 'r', encoding='utf-8') as f:
+                                metadata = json.load(f)
+                            st.write(f"    - JSON 파싱: ✅ 성공")
+                            st.write(f"    - 문서 수: {metadata.get('document_count', 'N/A')}")
+                            st.write(f"    - 타입: {metadata.get('vector_store_type', 'N/A')}")
+                        except Exception as e:
+                            st.write(f"    - JSON 파싱: ❌ 실패 - {str(e)}")
         
         if saved_stores:
             st.write(f"📁 **사용 가능한 벡터 스토어 ({len(saved_stores)}개):**")
@@ -687,6 +748,49 @@ def create_vector_store_tab():
                         st.error(f"❌ 벡터 스토어 로딩 실패: {str(e)}")
         else:
             st.info("📭 저장된 벡터 스토어가 없습니다. 먼저 새 벡터 스토어를 생성해주세요.")
+            
+            # Manual path option as fallback
+            st.write("**🔧 수동 로딩 (고급 사용자용):**")
+            manual_path = st.text_input(
+                "벡터 스토어 폴더 경로를 직접 입력:",
+                placeholder="예: /Users/kenny/GitHub/rag/vector_stores/vectorstore_chroma_20250628_1832"
+            )
+            
+            if manual_path and st.button("🔍 수동 경로에서 로딩"):
+                manual_store_path = Path(manual_path)
+                if manual_store_path.exists() and manual_store_path.is_dir():
+                    metadata_path = manual_store_path / "metadata.json"
+                    if metadata_path.exists():
+                        try:
+                            # Load metadata
+                            with open(metadata_path, 'r', encoding='utf-8') as f:
+                                metadata = json.load(f)
+                            
+                            st.success(f"✅ 메타데이터 발견: {metadata.get('vector_store_type', 'unknown')} 타입")
+                            
+                            # Initialize and load
+                            embedding_manager = EmbeddingManager(EMBEDDING_MODEL, MODELS_FOLDER)
+                            embeddings = embedding_manager.get_embeddings()
+                            
+                            vector_store_manager = VectorStoreManager(
+                                embeddings,
+                                vector_store_type=metadata.get('vector_store_type', 'chroma'),
+                                collection_name=metadata.get('collection_name', COLLECTION_NAME)
+                            )
+                            
+                            success = vector_store_manager.load_vector_store(manual_store_path)
+                            if success:
+                                st.session_state.vector_store_manager = vector_store_manager
+                                st.session_state.embedding_manager = embedding_manager
+                                st.session_state.vector_store_created = True
+                                st.balloons()
+                                
+                        except Exception as e:
+                            st.error(f"❌ 수동 로딩 실패: {str(e)}")
+                    else:
+                        st.error("❌ metadata.json 파일을 찾을 수 없습니다.")
+                else:
+                    st.error("❌ 지정된 경로가 존재하지 않습니다.")
     
     with tab3:
         st.write("### 🗂️ 벡터 스토어 파일 관리")
@@ -786,16 +890,48 @@ def create_vector_store_tab():
 
 
 def rag_experiment_tab():
-    """RAG experiment tab."""
+    """RAG experiment tab with various systems."""
     st.header("🧪 RAG 시스템 실험")
     
-    if not st.session_state.vector_store_created:
-        st.warning("먼저 벡터 스토어를 생성해주세요.")
+    # First check if we have a vector store manager with actual vector store
+    vector_store_manager = st.session_state.get("vector_store_manager")
+    vector_store = None
+    
+    if vector_store_manager:
+        try:
+            vector_store = vector_store_manager.get_vector_store()
+        except Exception as e:
+            st.warning(f"⚠️ 기존 벡터 스토어 확인 실패: {str(e)}")
+            vector_store = None
+    
+    # If no vector store exists, try to create manager (but don't force it)
+    if vector_store is None:
+        st.warning("📋 벡터 스토어가 필요합니다.")
+        st.info("**다음 중 하나를 수행하세요:**")
+        st.markdown("""
+        1. **📚 문서 로딩** 탭에서 문서를 로드한 후 **🔍 벡터 스토어** 탭에서 새 벡터 스토어 생성
+        2. **🔍 벡터 스토어** 탭에서 기존에 저장된 벡터 스토어 로딩
+        """)
         return
+    
+    # Display vector store info
+    st.success("✅ 벡터 스토어 준비 완료!")
+    
+    # Show current vector store status
+    with st.expander("📊 현재 벡터 스토어 정보"):
+        try:
+            # Get sample documents to check vector store
+            sample_docs = vector_store.similarity_search("test", k=1)
+            if sample_docs:
+                st.info(f"📄 로드된 문서 수: 추정 {len(sample_docs)} 개 이상")
+                st.write(f"**샘플 문서 출처:** {sample_docs[0].metadata.get('source', 'Unknown')}")
+            else:
+                st.warning("⚠️ 벡터 스토어가 비어있습니다.")
+        except Exception as e:
+            st.warning(f"⚠️ 벡터 스토어 상태 확인 실패: {str(e)}")
     
     # Initialize RAG systems if not already done
     if not st.session_state.rag_systems:
-        vector_store_manager = st.session_state.vector_store_manager
         selected_model = st.session_state.get("selected_llm_model", DEFAULT_LLM_MODEL)
         llm_temperature = st.session_state.get("llm_temperature", 0.1)
         llm_manager = LLMManager(selected_model, OLLAMA_BASE_URL, temperature=llm_temperature)
@@ -900,6 +1036,8 @@ def rag_experiment_tab():
                 
             except Exception as e:
                 st.error(f"{system_name} 실행 실패: {str(e)}")
+                import traceback
+                st.error(f"상세 오류 정보: {traceback.format_exc()}")
                 continue
             
             st.divider()
