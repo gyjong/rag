@@ -334,19 +334,49 @@ def rag_experiment_tab():
     with col2:
         retrieval_k = st.slider("검색할 문서 수 (k):", 1, 15, st.session_state.top_k)
     
-    # Sample queries
-    st.write("**샘플 질문:**")
+    # Sample queries - 분류 테스트용 다양한 유형
+    st.write("**샘플 질문 (질문 유형별):**")
     sample_queries = [
-        "2025년 AI 트렌드는 무엇인가요?",
-        "직장에서 AI를 어떻게 활용할 수 있나요?",
-        "인공지능이 업무 생산성에 미치는 영향은?",
-        "AI 기술의 미래 전망은 어떻게 되나요?"
+        "2025년 AI 트렌드는 무엇인가요?",                    # factual
+        "직장에서 AI를 어떻게 활용할 수 있나요?",            # procedural
+        "왜 AI가 업무 생산성에 중요한가요?",                # causal
+        "AI 기술은 언제부터 발전하기 시작했나요?",          # temporal
+        "생성형 AI와 기존 AI의 차이점은 무엇인가요?",        # comparative
+        "AI 시장 규모는 얼마나 되나요?",                   # quantitative
+        "인공지능에 대해 알려주세요.",                     # general
+        "머신러닝 모델을 구축하는 방법은?",                # procedural
+        "AI 개발에는 어떤 비용이 드나요?",                 # quantitative
+        "딥러닝이 주목받는 이유는 무엇인가요?"              # causal
     ]
+    
+    # Display categorized sample questions
+    st.write("**🏷️ 질문 유형 예시:**")
+    st.markdown("""
+    - **사실형(factual)**: "무엇", "어떤" → 정확한 정보 위주
+    - **방법형(procedural)**: "어떻게", "방법" → 단계별 설명  
+    - **원인형(causal)**: "왜", "이유" → 논리적 분석
+    - **시간형(temporal)**: "언제", "시점" → 시간순 정리
+    - **비교형(comparative)**: "차이", "비교" → 비교 분석
+    - **수치형(quantitative)**: "얼마", "규모" → 데이터 기반
+    - **일반형(general)**: 기타 → 종합적 설명
+    """)
+    
+    st.write("**📝 테스트 질문 목록:**")
+    
+    # Sample query types for reference
+    query_types = ["factual", "procedural", "causal", "temporal", "comparative", "quantitative", "general", "procedural", "quantitative", "causal"]
     
     cols = st.columns(2)
     for i, sample_query in enumerate(sample_queries):
         col = cols[i % 2]
-        if col.button(f"📝 {sample_query}", key=f"sample_{i}"):
+        query_type = query_types[i] if i < len(query_types) else "general"
+        type_emoji = {
+            "factual": "🎯", "procedural": "📋", "causal": "🤔", 
+            "temporal": "⏰", "comparative": "⚖️", "quantitative": "📊", "general": "📖"
+        }
+        emoji = type_emoji.get(query_type, "📝")
+        
+        if col.button(f"{emoji} {sample_query}", key=f"sample_{i}", help=f"질문 유형: {query_type}"):
             st.session_state.text_area_value = sample_query
             st.rerun()
     
