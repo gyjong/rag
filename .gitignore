@@ -144,3 +144,7 @@ models/
 
 # json data
 json_data/
+
+
+# vector store
+vector_stores/
