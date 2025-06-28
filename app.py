@@ -233,7 +233,7 @@ def load_documents_tab():
         st.write(f"📚 **사용 가능한 PDF 파일 ({len(pdf_files)}개):**")
         
         if pdf_files:
-            # Display PDF files with details
+            # Display PDF files with details and selection
             pdf_data = []
             for pdf_file in pdf_files:
                 file_size = pdf_file.stat().st_size / (1024 * 1024)  # MB
@@ -246,38 +246,123 @@ def load_documents_tab():
             df_pdfs = pd.DataFrame(pdf_data)
             st.dataframe(df_pdfs, use_container_width=True)
             
-            # JSON save options
-            st.write("### ⚙️ 처리 옵션")
-            col1, col2 = st.columns(2)
+            # File selection
+            st.write("### 🎯 로딩할 파일 선택")
             
-            with col1:
-                save_docs_json = st.checkbox("📄 원본 문서를 JSON으로 저장", value=True)
-                if save_docs_json:
-                    docs_json_name = st.text_input(
-                        "원본 JSON 파일명:", 
-                        value=f"documents_{datetime.now().strftime('%Y%m%d_%H%M')}.json"
-                    )
+            # Select all option
+            select_all = st.checkbox("📂 모든 파일 선택", value=True)
             
-            with col2:
-                save_chunks_json = st.checkbox("🧩 청크를 JSON으로 저장", value=True)
-                if save_chunks_json:
-                    chunks_json_name = st.text_input(
-                        "청크 JSON 파일명:", 
-                        value=f"chunks_{datetime.now().strftime('%Y%m%d_%H%M')}.json"
-                    )
+            # Individual file selection
+            if select_all:
+                selected_files = [f.name for f in pdf_files]
+            else:
+                selected_files = st.multiselect(
+                    "로딩할 PDF 파일 선택:",
+                    options=[f.name for f in pdf_files],
+                    default=[]
+                )
+            
+            # Display selected files info
+            if selected_files:
+                st.write(f"**선택된 파일:** {len(selected_files)}개")
+                selected_size = 0
+                for file_name in selected_files:
+                    file_path = DOCS_FOLDER / file_name
+                    selected_size += file_path.stat().st_size / (1024 * 1024)
+                
+                col1, col2, col3 = st.columns(3)
+                with col1:
+                    st.metric("📄 선택된 파일 수", len(selected_files))
+                with col2:
+                    st.metric("📊 총 크기", f"{selected_size:.1f} MB")
+                with col3:
+                    st.metric("📈 전체 대비", f"{len(selected_files)/len(pdf_files)*100:.0f}%")
+                
+                # Show selected files list
+                with st.expander("📋 선택된 파일 목록"):
+                    for file_name in selected_files:
+                        st.write(f"• {file_name}")
+            else:
+                st.warning("⚠️ 로딩할 파일을 선택해주세요.")
+            
+            # JSON save options (only show if files are selected)
+            if selected_files:
+                st.write("### ⚙️ 처리 옵션")
+                
+                # Generate default filenames based on selected files
+                if len(selected_files) == 1:
+                    # Single file
+                    file_base = selected_files[0].replace('.pdf', '')
+                    default_docs_name = f"documents_{file_base}_{datetime.now().strftime('%Y%m%d_%H%M')}.json"
+                    default_chunks_name = f"chunks_{file_base}_{datetime.now().strftime('%Y%m%d_%H%M')}.json"
+                else:
+                    # Multiple files
+                    default_docs_name = f"documents_{len(selected_files)}files_{datetime.now().strftime('%Y%m%d_%H%M')}.json"
+                    default_chunks_name = f"chunks_{len(selected_files)}files_{datetime.now().strftime('%Y%m%d_%H%M')}.json"
+                
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    save_docs_json = st.checkbox("📄 원본 문서를 JSON으로 저장", value=True)
+                    if save_docs_json:
+                        docs_json_name = st.text_input(
+                            "원본 JSON 파일명:", 
+                            value=default_docs_name
+                        )
+                
+                with col2:
+                    save_chunks_json = st.checkbox("🧩 청크를 JSON으로 저장", value=True)
+                    if save_chunks_json:
+                        chunks_json_name = st.text_input(
+                            "청크 JSON 파일명:", 
+                            value=default_chunks_name
+                        )
             
             # Load documents button
-            if st.button("🚀 PDF 문서 로딩 시작", type="primary"):
-                if not pdf_files:
-                    st.warning("PDF 파일이 없습니다.")
+            load_disabled = not selected_files if 'selected_files' in locals() else True
+            
+            if st.button("🚀 PDF 문서 로딩 시작", type="primary", disabled=load_disabled):
+                if not selected_files:
+                    st.warning("⚠️ 로딩할 파일을 선택해주세요.")
                     return
                 
                 # Initialize document processor
                 doc_processor = DocumentProcessor(st.session_state.chunk_size, st.session_state.chunk_overlap)
                 
-                # Load documents
-                with st.spinner("📖 PDF 문서 로딩 중..."):
-                    documents = doc_processor.load_documents_from_folder(DOCS_FOLDER)
+                # Create temporary folder with selected files only
+                selected_file_paths = [DOCS_FOLDER / file_name for file_name in selected_files]
+                
+                # Load only selected documents
+                st.write(f"📖 **{len(selected_files)}개 파일 로딩 시작**")
+                
+                progress_bar = st.progress(0)
+                status_text = st.empty()
+                
+                documents = []
+                loaded_count = 0
+                
+                for i, file_path in enumerate(selected_file_paths):
+                    try:
+                        status_text.text(f"📄 로딩 중: {file_path.name} ({i+1}/{len(selected_files)})")
+                        file_docs = doc_processor.load_documents_from_file(file_path)
+                        documents.extend(file_docs)
+                        loaded_count += 1
+                        
+                        # Update progress
+                        progress = (i + 1) / len(selected_files)
+                        progress_bar.progress(progress)
+                        
+                        st.write(f"✅ {file_path.name} 로딩 완료 ({len(file_docs)}개 페이지)")
+                        
+                    except Exception as e:
+                        st.error(f"❌ {file_path.name} 로딩 실패: {str(e)}")
+                        continue
+                
+                # Clear progress indicators
+                progress_bar.empty()
+                status_text.empty()
+                
+                st.write(f"📊 **로딩 완료: {loaded_count}/{len(selected_files)}개 파일**")
                 
                 if documents:
                     st.session_state.documents = documents
@@ -290,16 +375,34 @@ def load_documents_tab():
                     # Display document statistics
                     stats = doc_processor.get_document_stats(documents)
                     
-                    st.write("### 📊 문서 통계")
+                    st.write("### 📊 로딩 결과 통계")
                     col1, col2, col3, col4 = st.columns(4)
                     with col1:
-                        st.metric("📄 총 문서 수", stats["total_documents"])
+                        st.metric("📄 총 페이지 수", stats["total_documents"])
                     with col2:
                         st.metric("📝 총 문자 수", f"{stats['total_characters']:,}")
                     with col3:
-                        st.metric("📏 평균 문자/문서", f"{stats['average_chars_per_doc']:,.0f}")
+                        st.metric("📏 평균 문자/페이지", f"{stats['average_chars_per_doc']:,.0f}")
                     with col4:
-                        st.metric("📚 고유 소스", stats["unique_sources"])
+                        st.metric("📁 로딩된 파일", len(selected_files))
+                    
+                    # Display loaded files details
+                    st.write("### 📋 로딩된 파일 상세")
+                    loaded_files_data = []
+                    for file_name in selected_files:
+                        file_docs = [doc for doc in documents if doc.metadata.get('source') == file_name]
+                        if file_docs:
+                            file_chars = sum(len(doc.page_content) for doc in file_docs)
+                            loaded_files_data.append({
+                                "파일명": file_name,
+                                "페이지 수": len(file_docs),
+                                "문자 수": f"{file_chars:,}",
+                                "평균 문자/페이지": f"{file_chars/len(file_docs):,.0f}" if file_docs else "0"
+                            })
+                    
+                    if loaded_files_data:
+                        df_loaded = pd.DataFrame(loaded_files_data)
+                        st.dataframe(df_loaded, use_container_width=True)
                     
                     # Split documents
                     with st.spinner("🧩 문서 청크 분할 중..."):
@@ -314,17 +417,20 @@ def load_documents_tab():
                         doc_processor.save_chunks_to_json(chunks, chunks_json_path)
                     
                     # Display chunk statistics
-                    st.write("### 🧩 청크 통계")
-                    col1, col2, col3 = st.columns(3)
+                    st.write("### 🧩 청크 분할 결과")
+                    col1, col2, col3, col4 = st.columns(4)
                     with col1:
                         st.metric("🧩 총 청크 수", len(chunks))
                     with col2:
                         avg_chunk_size = sum(len(chunk.page_content) for chunk in chunks) / len(chunks)
                         st.metric("📏 평균 청크 크기", f"{avg_chunk_size:.0f}")
                     with col3:
+                        chunks_per_file = len(chunks) / len(selected_files)
+                        st.metric("📊 파일당 청크", f"{chunks_per_file:.1f}")
+                    with col4:
                         st.metric("⚙️ 청크 설정", f"{st.session_state.chunk_size}/{st.session_state.chunk_overlap}")
                     
-                    st.success("✅ 문서 로딩 및 전처리 완료!")
+                    st.success(f"✅ {len(selected_files)}개 파일의 문서 로딩 및 전처리 완료! ({len(chunks)}개 청크 생성)")
                 else:
                     st.error("❌ 문서 로딩에 실패했습니다.")
         else:

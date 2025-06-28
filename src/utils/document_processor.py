@@ -86,6 +86,46 @@ class DocumentProcessor:
         
         return documents
 
+    def load_documents_from_file(self, file_path: Path) -> List[Document]:
+        """Load a single PDF document from file.
+        
+        Args:
+            file_path: Path to the PDF file
+            
+        Returns:
+            List of loaded documents from the file
+        """
+        documents = []
+        
+        if not file_path.exists():
+            raise FileNotFoundError(f"파일이 존재하지 않습니다: {file_path}")
+            
+        if file_path.suffix.lower() != '.pdf':
+            raise ValueError(f"PDF 파일이 아닙니다: {file_path}")
+            
+        try:
+            loader = PyPDFLoader(str(file_path))
+            docs = loader.load()
+            
+            # Add enhanced metadata
+            for page_num, doc in enumerate(docs):
+                doc.metadata.update({
+                    "source": file_path.name,
+                    "file_path": str(file_path),
+                    "doc_type": "pdf",
+                    "page_number": page_num + 1,
+                    "total_pages": len(docs),
+                    "file_size_mb": round(file_path.stat().st_size / (1024 * 1024), 2),
+                    "loaded_at": datetime.now().isoformat()
+                })
+            
+            documents.extend(docs)
+            
+        except Exception as e:
+            raise Exception(f"문서 로딩 실패 {file_path.name}: {str(e)}")
+                
+        return documents
+
     def save_documents_to_json(self, documents: List[Document], output_path: Path) -> bool:
         """Save loaded documents to JSON format.
         
