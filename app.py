@@ -334,13 +334,6 @@ def rag_experiment_tab():
     with col2:
         retrieval_k = st.slider("검색할 문서 수 (k):", 1, 15, st.session_state.top_k)
     
-    # Query input
-    query = st.text_area(
-        "질문을 입력하세요:",
-        placeholder="예: 2025년 AI 트렌드는 무엇인가요?",
-        height=100
-    )
-    
     # Sample queries
     st.write("**샘플 질문:**")
     sample_queries = [
@@ -354,11 +347,17 @@ def rag_experiment_tab():
     for i, sample_query in enumerate(sample_queries):
         col = cols[i % 2]
         if col.button(f"📝 {sample_query}", key=f"sample_{i}"):
-            st.session_state.current_query = sample_query
+            st.session_state.text_area_value = sample_query
             st.rerun()
     
-    if "current_query" in st.session_state:
-        query = st.session_state.current_query
+    # Query input - 샘플 질문 선택 시 해당 질문이 입력창에 표시됨
+    query = st.text_area(
+        "질문을 입력하세요:",
+        value=st.session_state.get("text_area_value", ""),
+        placeholder="예: 2025년 AI 트렌드는 무엇인가요?",
+        height=100,
+        key="query_input"
+    )
     
     # Run experiment
     if query and selected_systems and st.button("🚀 실험 실행", type="primary"):

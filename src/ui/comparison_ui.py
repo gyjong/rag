@@ -55,10 +55,18 @@ class ComparisonUI:
         metrics_data = []
         for result in results:
             metadata = result.get("metadata", {})
+            # Try different possible keys for retrieved document count
+            retrieved_count = (
+                metadata.get("final_retrieved") or  # Advanced RAG
+                metadata.get("num_retrieved") or    # Other RAG systems
+                metadata.get("total_retrieved") or  # Fallback
+                len(result.get("retrieved_docs", []))  # Count from actual docs
+            )
+            
             metrics_data.append({
                 "시스템": result["rag_type"],
                 "처리 시간 (초)": round(result["total_time"], 2),
-                "검색 문서 수": metadata.get("num_retrieved", metadata.get("total_retrieved", 0)),
+                "검색 문서 수": retrieved_count,
                 "검색 방법": metadata.get("retrieval_method", "N/A"),
                 "생성 방법": metadata.get("generation_method", "N/A")
             })
@@ -208,7 +216,14 @@ class ComparisonUI:
             st.metric("처리 시간", f"{result['total_time']:.2f}초")
         
         with col2:
-            retrieved_count = len(result.get('retrieved_docs', []))
+            # Use the same logic as performance comparison for consistency
+            metadata = result.get("metadata", {})
+            retrieved_count = (
+                metadata.get("final_retrieved") or  # Advanced RAG
+                metadata.get("num_retrieved") or    # Naive RAG
+                metadata.get("total_retrieved") or  # Modular RAG
+                len(result.get("retrieved_docs", []))  # Fallback to counting docs
+            )
             st.metric("검색 문서", f"{retrieved_count}개")
         
         metadata = result.get("metadata", {})
