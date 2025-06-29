@@ -9,7 +9,7 @@ from langchain_core.documents import Document
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.document_loaders import PyPDFLoader
 
-from src.config.settings import DOCS_DIR, CHUNK_SIZE, CHUNK_OVERLAP
+from src.config import DOCS_FOLDER as DOCS_DIR, CHUNK_SIZE, CHUNK_OVERLAP
 
 
 class DocumentLoader:
