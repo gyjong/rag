@@ -29,6 +29,7 @@ from src.ui.translation_ui import TranslationUI
 from src.ui.json_services_ui import JSONServicesUI
 from src.ui.report_generation_ui import ReportGenerationUI
 from src.ui.document_discovery_ui import DocumentDiscoveryUI
+from src.ui.web_search_ui import WebSearchUI
 
 
 def load_custom_font():
@@ -229,7 +230,7 @@ def main():
     setup_sidebar()
     
     # Main tabs
-    tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9 = st.tabs([
+    tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9, tab10 = st.tabs([
         "📚 문서 로딩",
         "🔍 벡터 스토어",
         "🧪 RAG 실험",
@@ -238,6 +239,7 @@ def main():
         "🌐 문서 번역",
         "🏢 정보 서비스",
         "🔍 문서 발견",
+        "🌍 웹 검색 RAG",
         "ℹ️ 소개"
     ])
     
@@ -267,6 +269,9 @@ def main():
         DocumentDiscoveryUI.display_document_discovery_tab()
     
     with tab9:
+        WebSearchUI.display_web_search_tab()
+    
+    with tab10:
         # about_tab()
         AboutUI.display_about_page()
 
