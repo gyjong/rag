@@ -110,6 +110,14 @@ class TranslationUI:
         """
         st.subheader("📁 문서 입력")
         
+        # Document title input
+        document_title = st.text_input(
+            "문서 제목 (선택사항)",
+            value="",
+            placeholder="문서 제목을 입력하면 번역 품질이 향상됩니다",
+            help="문서 제목을 입력하면 번역 시 맥락을 더 잘 이해할 수 있습니다"
+        )
+        
         # File upload
         uploaded_file = st.file_uploader(
             "번역할 문서를 업로드하세요",
@@ -142,8 +150,9 @@ class TranslationUI:
             text_to_translate = manual_text.strip()
             st.info("✅ 수동 입력 텍스트 준비 완료")
         
-        # Store text in session state
+        # Store data in session state
         st.session_state.text_to_translate = text_to_translate
+        st.session_state.document_title = document_title.strip() if document_title.strip() else None
         
         # Translation button
         if text_to_translate:
@@ -156,6 +165,21 @@ class TranslationUI:
         """Display translation settings section."""
         st.subheader("⚙️ 번역 설정")
         
+        # Create language mapping for display
+        lang_display = {
+            "English": "영어 (English)",
+            "Korean": "한국어 (Korean)", 
+            "Japanese": "일본어 (Japanese)",
+            "Chinese": "중국어 (Chinese)",
+            "French": "프랑스어 (French)",
+            "German": "독일어 (German)",
+            "Spanish": "스페인어 (Spanish)",
+            "Italian": "이탈리아어 (Italian)",
+            "Portuguese": "포르투갈어 (Portuguese)",
+            "Dutch": "네덜란드어 (Dutch)",
+            "Russian": "러시아어 (Russian)"
+        }
+        
         # Language selection
         col1, col2 = st.columns(2)
         
@@ -164,7 +188,8 @@ class TranslationUI:
                 "원본 언어",
                 options=SUPPORTED_SOURCE_LANGUAGES,
                 index=SUPPORTED_SOURCE_LANGUAGES.index(DEFAULT_SOURCE_LANGUAGE) if DEFAULT_SOURCE_LANGUAGE in SUPPORTED_SOURCE_LANGUAGES else 0,
-                help="번역할 문서의 원본 언어를 선택하세요"
+                help="번역할 문서의 원본 언어를 선택하세요",
+                format_func=lambda x: lang_display.get(x, x)
             )
         
         with col2:
@@ -172,12 +197,31 @@ class TranslationUI:
                 "대상 언어",
                 options=SUPPORTED_TARGET_LANGUAGES,
                 index=SUPPORTED_TARGET_LANGUAGES.index(DEFAULT_TARGET_LANGUAGE) if DEFAULT_TARGET_LANGUAGE in SUPPORTED_TARGET_LANGUAGES else 0,
-                help="번역할 대상 언어를 선택하세요"
+                help="번역할 대상 언어를 선택하세요",
+                format_func=lambda x: lang_display.get(x, x)
             )
+        
+        # Display selected languages clearly
+        source_display = lang_display.get(source_lang, source_lang)
+        target_display = lang_display.get(target_lang, target_lang)
+        
+        st.success(f"🔄 **{source_display}** → **{target_display}** 번역")
+        
+        # Translation mode selection
+        st.markdown("**번역 방식:**")
+        translation_mode = st.radio(
+            "번역 방식을 선택하세요",
+            options=["단락 기반 (추천)", "문장 기반 (레거시)"],
+            index=0,
+            help="단락 기반: 빠르고 자연스러운 번역, 문장 기반: 정교한 문장별 번역"
+        )
+        
+        use_paragraph_mode = translation_mode == "단락 기반 (추천)"
         
         # Store settings in session state
         st.session_state.translation_source_lang = source_lang
         st.session_state.translation_target_lang = target_lang
+        st.session_state.use_paragraph_mode = use_paragraph_mode
         
         # Translation options
         st.markdown("**번역 옵션:**")
@@ -188,25 +232,47 @@ class TranslationUI:
             help="원본 문서의 줄 바꿈과 문단 구조를 유지합니다"
         )
         
-        show_sentence_pairs = st.checkbox(
-            "문장별 비교 표시",
-            value=True,
-            help="번역 결과에 원문과 번역문을 문장별로 비교 표시합니다"
-        )
+        if use_paragraph_mode:
+            show_markdown = st.checkbox(
+                "마크다운 형식으로 정리",
+                value=True,
+                help="번역 결과를 마크다운 형식으로 정리하여 보기 좋게 표시합니다"
+            )
+            
+            show_comparison = st.checkbox(
+                "단락별 비교 표시",
+                value=True,
+                help="번역 결과에 원문과 번역문을 단락별로 비교 표시합니다"
+            )
+        else:
+            show_markdown = False
+            show_comparison = st.checkbox(
+                "문장별 비교 표시",
+                value=True,
+                help="번역 결과에 원문과 번역문을 문장별로 비교 표시합니다"
+            )
         
         # Store options in session state
         st.session_state.preserve_formatting = preserve_formatting
-        st.session_state.show_sentence_pairs = show_sentence_pairs
+        st.session_state.show_markdown = show_markdown
+        st.session_state.show_comparison = show_comparison
         
         # Translation info
         st.markdown("---")
         st.markdown("**ℹ️ 번역 정보:**")
-        st.info(f"""
-        - **원본 언어:** {source_lang}
-        - **대상 언어:** {target_lang}
+        
+        info_text = f"""
+        - **원본 언어:** {source_display}
+        - **대상 언어:** {target_display}
+        - **번역 방식:** {translation_mode}
         - **LLM 모델:** {st.session_state.get('selected_llm_model', 'Unknown')}
         - **Temperature:** {st.session_state.get('llm_temperature', 0.1)}
-        """)
+        """
+        
+        if use_paragraph_mode:
+            info_text += "\n        - **마크다운 정리:** " + ("활성화" if show_markdown else "비활성화")
+        
+        st.info(info_text)
     
     @staticmethod
     def _perform_translation(translation_rag: TranslationRAG, text: str):
@@ -218,13 +284,19 @@ class TranslationUI:
         """
         source_lang = st.session_state.get("translation_source_lang", "English")
         target_lang = st.session_state.get("translation_target_lang", "Korean")
+        use_paragraph_mode = st.session_state.get("use_paragraph_mode", True)
+        document_title = st.session_state.get("document_title", None)
         
-        with st.spinner(f"{source_lang}에서 {target_lang}으로 번역 중..."):
+        mode_text = "단락 기반" if use_paragraph_mode else "문장 기반"
+        
+        with st.spinner(f"{source_lang}에서 {target_lang}으로 번역 중... ({mode_text})"):
             try:
                 result = translation_rag.translate_document(
                     text=text,
                     source_lang=source_lang,
-                    target_lang=target_lang
+                    target_lang=target_lang,
+                    use_paragraph_mode=use_paragraph_mode,
+                    document_title=document_title
                 )
                 
                 if result.get("success", False):
@@ -245,44 +317,113 @@ class TranslationUI:
             result: Translation result dictionary
         """
         st.markdown("## 📋 번역 결과")
+        
+        # Language information display
+        source_lang = result.get("source_language", "Unknown")
+        target_lang = result.get("target_language", "Unknown") 
+        translation_mode = result.get("translation_mode", "unknown")
+        
+        # Create language mapping for display
+        lang_display = {
+            "English": "영어 (English)",
+            "Korean": "한국어 (Korean)", 
+            "Japanese": "일본어 (Japanese)",
+            "Chinese": "중국어 (Chinese)",
+            "French": "프랑스어 (French)",
+            "German": "독일어 (German)",
+            "Spanish": "스페인어 (Spanish)",
+            "Italian": "이탈리아어 (Italian)",
+            "Portuguese": "포르투갈어 (Portuguese)",
+            "Dutch": "네덜란드어 (Dutch)",
+            "Russian": "러시아어 (Russian)"
+        }
+        
+        source_display = lang_display.get(source_lang, source_lang)
+        target_display = lang_display.get(target_lang, target_lang)
+        mode_display = "단락 기반" if translation_mode == "paragraph" else "문장 기반"
+        
+        # Prominent language information
+        st.info(f"""
+        🌐 **번역 정보**
+        - **원본 언어:** {source_display}
+        - **대상 언어:** {target_display}  
+        - **번역 방식:** {mode_display}
+        - **문서 제목:** {result.get('document_title', '제목 없음')}
+        """)
+        
         st.markdown("---")
         
         # Translation statistics
         stats = TranslationUI._get_translation_stats(result)
         
-        # Display stats in columns
-        col1, col2, col3, col4 = st.columns(4)
+        # Display stats based on translation mode
+        if translation_mode == "paragraph":
+            col1, col2, col3, col4 = st.columns(4)
+            
+            with col1:
+                st.metric("총 단락 수", stats.get("total_paragraphs", 0))
+            
+            with col2:
+                st.metric("번역 단락 수", stats.get("translated_paragraphs", 0))
+            
+            with col3:
+                st.metric("원문 단어 수", stats.get("original_word_count", 0))
+            
+            with col4:
+                st.metric("번역 단어 수", stats.get("translated_word_count", 0))
+        else:
+            col1, col2, col3, col4 = st.columns(4)
+            
+            with col1:
+                st.metric("총 문장 수", stats.get("total_sentences", 0))
+            
+            with col2:
+                st.metric("번역 문장 수", stats.get("translated_sentences", 0))
+            
+            with col3:
+                st.metric("원문 단어 수", stats.get("original_word_count", 0))
+            
+            with col4:
+                st.metric("번역 단어 수", stats.get("translated_word_count", 0))
         
-        with col1:
-            st.metric("총 문장 수", stats.get("total_sentences", 0))
+        # Display translation results
+        markdown_content = result.get("markdown_content", "")
+        show_markdown = st.session_state.get("show_markdown", True)
         
-        with col2:
-            st.metric("번역 문장 수", stats.get("translated_sentences", 0))
-        
-        with col3:
-            st.metric("원문 단어 수", stats.get("original_word_count", 0))
-        
-        with col4:
-            st.metric("번역 단어 수", stats.get("translated_word_count", 0))
-        
-        # Main translation result
-        st.subheader("📄 번역된 문서")
-        
-        # Display translated text
-        translated_text = result.get("translated_text", "")
-        st.text_area(
-            "번역 결과",
-            translated_text,
-            height=300,
-            disabled=True
-        )
+        if markdown_content and show_markdown:
+            # Display markdown formatted result
+            st.subheader(f"📄 번역된 문서 ({target_display}, 마크다운 형식)")
+            st.markdown(markdown_content)
+            
+            # Also show raw translated text in expander
+            with st.expander(f"📝 원본 번역 텍스트 보기 ({target_display})"):
+                translated_text = result.get("translated_text", "")
+                st.text_area(
+                    f"번역 결과 ({target_display})",
+                    translated_text,
+                    height=300,
+                    disabled=True
+                )
+        else:
+            # Display raw translated text
+            st.subheader(f"📄 번역된 문서 ({target_display})")
+            translated_text = result.get("translated_text", "")
+            st.text_area(
+                f"번역 결과 ({target_display})",
+                translated_text,
+                height=300,
+                disabled=True
+            )
         
         # Download button
         TranslationUI._display_download_section(result)
         
-        # Sentence-by-sentence comparison
-        if st.session_state.get("show_sentence_pairs", True):
-            TranslationUI._display_sentence_comparison(result)
+        # Comparison section
+        if st.session_state.get("show_comparison", True):
+            if translation_mode == "paragraph":
+                TranslationUI._display_paragraph_comparison(result)
+            else:
+                TranslationUI._display_sentence_comparison(result)
     
     @staticmethod
     def _get_translation_stats(result: Dict[str, Any]) -> Dict[str, Any]:
@@ -309,32 +450,148 @@ class TranslationUI:
         """
         st.subheader("💾 다운로드 옵션")
         
-        col1, col2 = st.columns(2)
+        # Get language information for filename
+        source_lang = result.get("source_language", "Unknown")
+        target_lang = result.get("target_language", "Unknown")
         
-        with col1:
+        # Create simple language codes for filenames
+        lang_codes = {
+            "English": "en",
+            "Korean": "ko", 
+            "Japanese": "ja",
+            "Chinese": "zh",
+            "French": "fr",
+            "German": "de",
+            "Spanish": "es",
+            "Italian": "it",
+            "Portuguese": "pt",
+            "Dutch": "nl",
+            "Russian": "ru"
+        }
+        
+        source_code = lang_codes.get(source_lang, source_lang.lower()[:2])
+        target_code = lang_codes.get(target_lang, target_lang.lower()[:2])
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        
+        # Create download buttons based on available content
+        cols = st.columns(3)
+        
+        with cols[0]:
             # Download translated text only
             translated_text = result.get("translated_text", "")
             st.download_button(
-                label="📄 번역문만 다운로드",
+                label="📄 번역문 다운로드",
                 data=translated_text,
-                file_name=f"translated_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt",
+                file_name=f"translated_{source_code}_{target_code}_{timestamp}.txt",
                 mime="text/plain",
-                use_container_width=True
+                use_container_width=True,
+                help=f"{source_lang} → {target_lang} 번역 텍스트"
             )
         
-        with col2:
+        with cols[1]:
+            # Download markdown if available
+            markdown_content = result.get("markdown_content", "")
+            if markdown_content:
+                st.download_button(
+                    label="📝 마크다운 다운로드",
+                    data=markdown_content,
+                    file_name=f"translated_markdown_{source_code}_{target_code}_{timestamp}.md",
+                    mime="text/markdown",
+                    use_container_width=True,
+                    help=f"마크다운 형식의 {target_lang} 번역 문서"
+                )
+            else:
+                st.empty()
+        
+        with cols[2]:
             # Download full report
             if "translation_rag" in st.session_state:
                 translation_rag = st.session_state.translation_rag
                 export_text = translation_rag.export_translation_result(result)
                 
                 st.download_button(
-                    label="📊 상세 리포트 다운로드",
+                    label="📊 상세 리포트",
                     data=export_text,
-                    file_name=f"translation_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.md",
+                    file_name=f"translation_report_{source_code}_{target_code}_{timestamp}.md",
                     mime="text/markdown",
-                    use_container_width=True
+                    use_container_width=True,
+                    help=f"번역 과정과 결과가 포함된 상세 리포트"
                 )
+    
+    @staticmethod
+    def _display_paragraph_comparison(result: Dict[str, Any]):
+        """Display paragraph-by-paragraph comparison.
+        
+        Args:
+            result: Translation result dictionary
+        """
+        st.subheader("🔍 단락별 번역 비교")
+        
+        paragraph_pairs = result.get("paragraph_pairs", [])
+        
+        if not paragraph_pairs:
+            st.warning("단락별 비교 데이터가 없습니다.")
+            return
+        
+        # Filter out skipped paragraphs
+        filtered_pairs = [pair for pair in paragraph_pairs if not pair.get("skipped", False)]
+        
+        if not filtered_pairs:
+            st.warning("번역된 단락이 없습니다.")
+            return
+        
+        # Pagination for large documents
+        items_per_page = 5  # Show fewer paragraphs per page since they're longer
+        total_pages = (len(filtered_pairs) + items_per_page - 1) // items_per_page
+        
+        if total_pages > 1:
+            page = st.selectbox(
+                "페이지 선택",
+                options=list(range(1, total_pages + 1)),
+                index=0,
+                format_func=lambda x: f"페이지 {x} ({(x-1)*items_per_page + 1}-{min(x*items_per_page, len(filtered_pairs))})"
+            )
+        else:
+            page = 1
+        
+        # Calculate slice
+        start_idx = (page - 1) * items_per_page
+        end_idx = min(start_idx + items_per_page, len(filtered_pairs))
+        page_pairs = filtered_pairs[start_idx:end_idx]
+        
+        # Display pairs
+        for i, pair in enumerate(page_pairs, start=start_idx + 1):
+            with st.expander(f"단락 {i}: {pair.get('original', '')[:80]}..."):
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    st.markdown("**원문:**")
+                    st.text_area(
+                        "원문",
+                        pair.get("original", ""),
+                        height=200,
+                        disabled=True,
+                        label_visibility="collapsed",
+                        key=f"original_para_{i}"
+                    )
+                
+                with col2:
+                    st.markdown("**번역:**")
+                    st.text_area(
+                        "번역",
+                        pair.get("translated", ""),
+                        height=200,
+                        disabled=True,
+                        label_visibility="collapsed",
+                        key=f"translated_para_{i}"
+                    )
+        
+        # Clear results button
+        st.markdown("---")
+        if st.button("🗑️ 번역 결과 지우기", type="secondary"):
+            if "translation_result" in st.session_state:
+                del st.session_state.translation_result
+            st.rerun()
     
     @staticmethod
     def _display_sentence_comparison(result: Dict[str, Any]):
@@ -390,7 +647,7 @@ class TranslationUI:
                         height=100,
                         disabled=True,
                         label_visibility="collapsed",
-                        key=f"original_{i}"
+                        key=f"original_sent_{i}"
                     )
                 
                 with col2:
@@ -401,7 +658,7 @@ class TranslationUI:
                         height=100,
                         disabled=True,
                         label_visibility="collapsed",
-                        key=f"translated_{i}"
+                        key=f"translated_sent_{i}"
                     )
         
         # Clear results button
