@@ -16,7 +16,7 @@ from src.config import *
 from src.utils.embeddings import EmbeddingManager
 from src.utils.vector_store import VectorStoreManager
 from src.utils.llm_manager import LLMManager
-from src.utils.font_utils import apply_custom_css
+from src.utils.font_utils import inject_custom_font
 from src.rag_systems.naive_rag import NaiveRAG
 from src.rag_systems.advanced_rag import AdvancedRAG
 from src.rag_systems.modular_rag import ModularRAG
@@ -30,11 +30,6 @@ from src.ui.json_services_ui import JSONServicesUI
 from src.ui.report_generation_ui import ReportGenerationUI
 from src.ui.document_discovery_ui import DocumentDiscoveryUI
 from src.ui.web_search_ui import WebSearchUI
-
-
-def load_custom_font():
-    """Load custom font if available."""
-    return apply_custom_css()
 
 
 def get_or_create_vector_store_manager() -> Optional[VectorStoreManager]:
@@ -100,15 +95,11 @@ def setup_page():
     )
     
     # Apply custom font globally first
-    font_loaded = apply_custom_css()
+    inject_custom_font("fonts/Paperlogy.ttf")
     
     # Display title with custom styling
-    if font_loaded:
-        st.markdown('<h1 class="main-title">🤖 RAG Systems Comparison Tool</h1>', unsafe_allow_html=True)
-        st.markdown('<p class="subtitle">단계별 Naive RAG, Advanced RAG, Modular RAG 비교 실험 애플리케이션</p>', unsafe_allow_html=True)
-    else:
-        st.title("🤖 RAG Systems Comparison Tool")
-        st.subheader("단계별 Naive RAG, Advanced RAG, Modular RAG 비교 실험 애플리케이션")
+    st.markdown('<h1 class="main-title">🤖 RAG Systems Comparison Tool</h1>', unsafe_allow_html=True)
+    st.markdown('<p class="subtitle">단계별 Naive RAG, Advanced RAG, Modular RAG 비교 실험 애플리케이션</p>', unsafe_allow_html=True)
 
 
 def setup_sidebar():
@@ -222,7 +213,7 @@ def setup_sidebar():
 def main():
     """Main application function."""
     # Apply custom font globally first (before any other UI elements)
-    apply_custom_css()
+    inject_custom_font("fonts/Paperlogy.ttf")
     
     # Setup
     setup_page()
