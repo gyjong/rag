@@ -10,8 +10,23 @@ from langchain_community.vectorstores import FAISS
 from langchain_community.vectorstores import Chroma
 from langchain_core.vectorstores import VectorStore
 
+try:
+    from langchain_milvus import Milvus
+    MILVUS_AVAILABLE = True
+except ImportError:
+    MILVUS_AVAILABLE = False
+    Milvus = None
+
 from src.components.embeddings import EmbeddingManager
-from src.config.settings import TOP_K
+
+try:
+    from src.config.settings import TOP_K, MILVUS_URI, MILVUS_TOKEN, MILVUS_COLLECTION_NAME
+except ImportError:
+    # 기본값 사용
+    TOP_K = 5
+    MILVUS_URI = "./milvus_local.db"
+    MILVUS_TOKEN = ""
+    MILVUS_COLLECTION_NAME = "rag_documents"
 
 
 class VectorStoreManager:
@@ -36,6 +51,25 @@ class VectorStoreManager:
                 self.vector_store = FAISS.from_documents(documents, embeddings)
             elif self.store_type == "chroma":
                 self.vector_store = Chroma.from_documents(documents, embeddings)
+            elif self.store_type == "milvus":
+                if not MILVUS_AVAILABLE:
+                    raise ImportError(
+                        "Milvus 사용을 위해 langchain-milvus와 pymilvus를 설치해주세요: "
+                        "pip install langchain-milvus pymilvus"
+                    )
+                
+                # Milvus 연결 인자 설정
+                connection_args = {"uri": MILVUS_URI}
+                if MILVUS_TOKEN:
+                    connection_args["token"] = MILVUS_TOKEN
+                
+                self.vector_store = Milvus.from_documents(
+                    documents,
+                    embeddings,
+                    collection_name=MILVUS_COLLECTION_NAME,
+                    connection_args=connection_args,
+                    drop_old=False  # 기존 컬렉션 유지
+                )
             else:
                 raise ValueError(f"지원하지 않는 벡터 스토어 타입: {self.store_type}")
             

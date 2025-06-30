@@ -1557,3 +1557,64 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 RAG 기술의 민주화를 통해 AI 활용의 진입장벽을 낮추고, 
 투명하고 검증 가능한 실험 환경을 제공하여 
 더 나은 AI 응용 프로그램 개발에 기여합니다. 
+
+## 🔍 지원되는 벡터 스토어
+
+### FAISS
+- **특징**: 빠른 유사도 검색, 로컬 파일 기반
+- **용도**: 프로토타이핑, 소규모 데이터셋
+- **설정**: 추가 설정 불필요
+
+### Chroma 
+- **특징**: 오픈소스, 임베딩 데이터베이스
+- **용도**: 개발 및 테스트 환경
+- **설정**: 추가 설정 불필요
+
+### Milvus ⭐ NEW!
+- **특징**: 확장 가능한 고성능 벡터 데이터베이스
+- **용도**: 대규모 프로덕션 환경, 엔터프라이즈급 애플리케이션
+- **모드**: 
+  - **Milvus Lite**: 경량 로컬 버전 (프로토타이핑용)
+  - **Milvus Server**: 도커/쿠버네티스 기반 서버 (프로덕션용)
+
+#### Milvus 설정 방법
+
+**1. 패키지 설치**
+```bash
+pip install langchain-milvus pymilvus
+```
+
+**2. 환경 변수 설정 (.env 파일)**
+```bash
+# Milvus Lite (로컬 파일 기반)
+MILVUS_URI=./milvus_local.db
+
+# Milvus Server (서버 기반)
+# MILVUS_URI=http://localhost:19530
+# MILVUS_TOKEN=your_token_here
+
+# 컬렉션 이름
+MILVUS_COLLECTION_NAME=rag_documents
+```
+
+**3. Milvus Server 실행 (선택사항)**
+```bash
+# Docker로 Milvus 실행
+curl -sfL https://raw.githubusercontent.com/milvus-io/milvus/master/scripts/standalone_embed.sh -o standalone_embed.sh
+bash standalone_embed.sh start
+```
+
+**4. 애플리케이션에서 Milvus 선택**
+- 사이드바에서 "Vector Store 엔진 선택" → **milvus** 선택
+- 벡터 스토어 생성 시 자동으로 Milvus 연결
+
+#### Milvus vs 다른 벡터 스토어
+
+| 기능 | FAISS | Chroma | **Milvus** |
+|------|-------|--------|------------|
+| 확장성 | 제한적 | 중간 | **매우 높음** |
+| 성능 | 빠름 | 중간 | **매우 빠름** |
+| 멀티테넌시 | ❌ | 제한적 | **✅ 완전 지원** |
+| 하이브리드 검색 | ❌ | 제한적 | **✅ BM25 + 벡터** |
+| 클러스터링 | ❌ | ❌ | **✅ 분산 배포** |
+| API 호환성 | LangChain만 | LangChain만 | **다양한 SDK** |

@@ -12,6 +12,13 @@ from langchain_core.documents import Document
 from langchain_core.vectorstores import VectorStore
 from langchain_community.vectorstores import Chroma, FAISS
 from langchain_core.embeddings import Embeddings
+
+try:
+    from langchain_milvus import Milvus
+    MILVUS_AVAILABLE = True
+except ImportError:
+    MILVUS_AVAILABLE = False
+    Milvus = None
 import chromadb
 from chromadb.config import Settings
 import tempfile
@@ -93,6 +100,8 @@ class VectorStoreManager:
                     self._vector_store = self._create_chroma_store(documents)
                 elif self.vector_store_type == "faiss":
                     self._vector_store = self._create_faiss_store(documents)
+                elif self.vector_store_type == "milvus":
+                    self._vector_store = self._create_milvus_store(documents)
                 else:
                     raise ValueError(f"지원하지 않는 벡터 스토어 타입: {self.vector_store_type}")
                 
@@ -148,6 +157,36 @@ class VectorStoreManager:
         """Create FAISS vector store."""
         return FAISS.from_documents(documents, self.embeddings)
     
+    def _create_milvus_store(self, documents: List[Document]) -> VectorStore:
+        """Create Milvus vector store."""
+        if not MILVUS_AVAILABLE:
+            raise ImportError(
+                "Milvus 사용을 위해 langchain-milvus와 pymilvus를 설치해주세요: "
+                "pip install langchain-milvus pymilvus"
+            )
+        
+        # Milvus 연결 설정
+        try:
+            from src.config.settings import MILVUS_URI, MILVUS_TOKEN
+        except ImportError:
+            # 기본값 사용
+            MILVUS_URI = "./milvus_local.db"
+            MILVUS_TOKEN = ""
+        
+        connection_args = {"uri": MILVUS_URI}
+        if MILVUS_TOKEN:
+            connection_args["token"] = MILVUS_TOKEN
+        
+        return Milvus.from_documents(
+            documents,
+            self.embeddings,
+            collection_name=self.collection_name,
+            connection_args=connection_args,
+            drop_old=False,  # 기존 컬렉션 유지
+            # 메타데이터 동적 필드 활성화 (선택사항)
+            enable_dynamic_field=True
+        )
+    
     def save_vector_store(self, save_path: Path, metadata: Optional[Dict[str, Any]] = None) -> bool:
         """Save the vector store to disk.
         
@@ -188,6 +227,12 @@ class VectorStoreManager:
                 faiss_path = save_path / "faiss_index"
                 self._vector_store.save_local(str(faiss_path))
                 save_metadata["faiss_path"] = str(faiss_path)
+                
+            elif self.vector_store_type == "milvus":
+                # Milvus는 서버 기반이므로 연결 정보만 저장
+                save_metadata["milvus_collection"] = self.collection_name
+                save_metadata["milvus_connection"] = "Server-based storage"
+                st.info("ℹ️ Milvus는 서버 기반 스토리지입니다. 컬렉션 정보만 저장됩니다.")
             
             # Save metadata
             metadata_path = save_path / "metadata.json"
@@ -278,6 +323,39 @@ class VectorStoreManager:
                     self.embeddings,
                     allow_dangerous_deserialization=True
                 )
+                
+            elif vector_store_type == "milvus":
+                if not MILVUS_AVAILABLE:
+                    st.error("❌ Milvus 사용을 위해 langchain-milvus와 pymilvus를 설치해주세요.")
+                    return False
+                
+                # Milvus는 서버 기반이므로 연결만 확인
+                try:
+                    from src.config.settings import MILVUS_URI, MILVUS_TOKEN
+                except ImportError:
+                    # 기본값 사용
+                    MILVUS_URI = "./milvus_local.db" 
+                    MILVUS_TOKEN = ""
+                
+                connection_args = {"uri": MILVUS_URI}
+                if MILVUS_TOKEN:
+                    connection_args["token"] = MILVUS_TOKEN
+                
+                try:
+                    # 기존 컬렉션에 연결
+                    self._vector_store = Milvus(
+                        embedding_function=self.embeddings,
+                        collection_name=collection_name,
+                        connection_args=connection_args
+                    )
+                    st.info("ℹ️ Milvus 컬렉션에 연결되었습니다.")
+                except Exception as e:
+                    st.error(f"❌ Milvus 연결 실패: {str(e)}")
+                    return False
+                
+            else:
+                st.error(f"❌ 지원하지 않는 벡터 스토어 타입: {vector_store_type}")
+                return False
             
             # Update instance variables
             self.vector_store_type = vector_store_type
@@ -486,6 +564,54 @@ class VectorStoreManager:
                         "status": f"⚠️ FAISS 오류: {str(faiss_error)[:50]}",
                         "embedding_dimension": "unknown",
                         "telemetry_status": "N/A (FAISS)"
+                    }
+                    
+            elif self.vector_store_type == "milvus":
+                # Milvus specific stats
+                try:
+                    # Try to get collection info from Milvus
+                    if hasattr(self._vector_store, 'col') and self._vector_store.col:
+                        try:
+                            # Get collection statistics
+                            num_entities = self._vector_store.col.num_entities
+                            doc_count = num_entities
+                            status = "✅ 활성화됨"
+                        except:
+                            # Fallback to metadata
+                            doc_count = self._metadata.get('document_count', 'N/A')
+                            status = "✅ 활성화됨 (메타데이터 기반)"
+                    else:
+                        # Use metadata
+                        doc_count = self._metadata.get('document_count', 'N/A')
+                        status = "✅ 활성화됨 (서버 기반)"
+                    
+                    # Try to get embedding dimension
+                    embedding_dim = "unknown"
+                    try:
+                        if hasattr(self._vector_store, 'col') and self._vector_store.col:
+                            schema = self._vector_store.col.schema
+                            for field in schema.fields:
+                                if field.dtype.name == 'FLOAT_VECTOR':
+                                    embedding_dim = field.params.get('dim', 'unknown')
+                                    break
+                    except:
+                        pass
+                    
+                    return {
+                        "collection_name": self.collection_name,
+                        "document_count": doc_count,
+                        "status": status,
+                        "embedding_dimension": embedding_dim,
+                        "telemetry_status": "✅ Milvus 연결됨"
+                    }
+                    
+                except Exception as milvus_error:
+                    return {
+                        "collection_name": self.collection_name,
+                        "document_count": self._metadata.get('document_count', 'N/A'),
+                        "status": f"⚠️ Milvus 통계 조회 오류: {str(milvus_error)[:50]}",
+                        "embedding_dimension": "unknown",
+                        "telemetry_status": "⚠️ 연결 문제"
                     }
             else:
                 return {

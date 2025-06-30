@@ -136,8 +136,8 @@ def setup_sidebar():
     st.sidebar.subheader("🗄️ 벡터 스토어 타입")
     vector_store_type = st.sidebar.radio(
         "Vector Store 엔진 선택:",
-        options=["faiss", "chroma"],
-        index=["faiss", "chroma"].index(st.session_state.get("vector_store_type", "faiss"))
+        options=["faiss", "chroma", "milvus"],
+        index=["faiss", "chroma", "milvus"].index(st.session_state.get("vector_store_type", "faiss"))
     )
     st.session_state.vector_store_type = vector_store_type
     st.sidebar.write(f"현재 선택: {vector_store_type}")
