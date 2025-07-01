@@ -225,8 +225,8 @@ def main():
         "📚 문서 로딩",
         "🔍 벡터 스토어",
         "🧪 RAG 실험",
-        "📋 보고서 생성",
         "📊 결과 비교",
+        "📋 보고서 생성",
         "🌐 문서 번역",
         "🏢 정보 서비스",
         "🔍 문서 발견",
@@ -244,11 +244,11 @@ def main():
         RAGExperimentUI.display_rag_experiment_tab()
     
     with tab4:
-        ReportGenerationUI.display_report_generation_tab()
-    
-    with tab5:
         ComparisonUI.display_comparison_tab()
-    
+
+    with tab5:
+        ReportGenerationUI.display_report_generation_tab()
+        
     with tab6:
         TranslationUI.display_translation_tab()
     
