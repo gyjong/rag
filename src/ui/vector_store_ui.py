@@ -35,9 +35,6 @@ class VectorStoreUI:
         
         with tab3:
             VectorStoreUI._display_vector_store_management()
-        
-        # Test search functionality (if vector store is loaded)
-        VectorStoreUI._display_search_test()
     
     @staticmethod
     def _display_vector_store_creation():
@@ -285,104 +282,88 @@ class VectorStoreUI:
     
     @staticmethod
     def _load_vector_store(selected_store, store_path):
-        """Load selected vector store."""
+        """Load vector store."""
         try:
-            # Initialize embedding manager
+            vector_store_type = selected_store.get('vector_store_type', 'chroma')
+            
             embedding_manager = EmbeddingManager(EMBEDDING_MODEL, MODELS_FOLDER)
             embeddings = embedding_manager.get_embeddings()
             
-            # Create vector store manager and load
             vector_store_manager = VectorStoreManager(
-                embeddings,
-                vector_store_type=selected_store.get('vector_store_type', 'chroma'),
+                embeddings, 
+                vector_store_type=vector_store_type,
                 collection_name=selected_store.get('collection_name', COLLECTION_NAME)
             )
             
-            success = vector_store_manager.load_vector_store(store_path)
-            if success:
-                # Store in session state
-                st.session_state.vector_store_manager = vector_store_manager
-                st.session_state.embedding_manager = embedding_manager
-                st.session_state.vector_store_created = True
-                
-                # Store vector store metadata in session state for consistency
-                st.session_state.vector_store_metadata = getattr(vector_store_manager, '_metadata', {})
-                st.session_state.vector_store_source = 'loaded'  # Track source
-                
-                # Generate unique vector store ID for change detection
-                import time
-                st.session_state.vector_store_id = f"loaded_{int(time.time())}_{selected_store.get('store_name', 'unknown')}"
-                
-                # Reset RAG systems and experiments when vector store changes
-                if "rag_systems" in st.session_state:
-                    st.session_state.rag_systems = {}
-                if "experiment_results" in st.session_state:
-                    st.session_state.experiment_results = []
-                else:
-                    st.session_state.experiment_results = []
-                    
-                st.info("🔄 **새로운 벡터 스토어가 로딩되었습니다.** RAG 실험이 재설정됩니다.")
-                
-                # Show loaded stats and search test
-                VectorStoreUI._display_loading_success(vector_store_manager)
-                
-                st.balloons()
-        
+            vector_store_manager.load_vector_store(store_path)
+            
+            st.session_state.vector_store_manager = vector_store_manager
+            st.session_state.embedding_manager = embedding_manager
+            st.session_state.vector_store_created = True
+            
+            # 메타데이터를 세션 상태에 저장하여 일관성 유지
+            st.session_state.vector_store_metadata = getattr(vector_store_manager, '_metadata', {})
+            st.session_state.vector_store_source = 'loaded'
+            
+            # 벡터 스토어 ID 생성
+            import time
+            st.session_state.vector_store_id = f"loaded_{int(time.time())}_{selected_store['store_name']}"
+            
+            # RAG 시스템 및 실험 결과 초기화
+            if "rag_systems" in st.session_state:
+                st.session_state.rag_systems = {}
+            if "experiment_results" in st.session_state:
+                st.session_state.experiment_results = []
+
+            st.balloons()
+            st.success(f"✅ 벡터 스토어 '{selected_store['store_name']}' 로딩 완료!")
+
+            # 로딩 성공 후 바로 검색 테스트 UI 표시
+            VectorStoreUI._display_search_test()
+
         except Exception as e:
             st.error(f"❌ 벡터 스토어 로딩 실패: {str(e)}")
+            import traceback
+            st.error(traceback.format_exc())
     
     @staticmethod
-    def _display_loading_success(vector_store_manager):
-        """Display loading success information and search test."""
-        stats = vector_store_manager.get_collection_stats()
-        st.write("### ✅ 로딩 완료")
-        
-        col1, col2, col3 = st.columns(3)
-        with col1:
-            st.metric("📄 로딩된 문서", stats.get("document_count", "N/A"))
-        with col2:
-            st.metric("🔧 상태", stats.get("status", "N/A"))
-        with col3:
-            st.metric("🚫 텔레메트리", stats.get("telemetry_status", "N/A"))
-        
-        # Quick search test
-        st.write("### 🔍 벡터 스토어 검색 테스트")
-        
-        col1, col2 = st.columns([3, 1])
-        with col1:
-            test_query = st.text_input(
-                "검색 테스트 쿼리:", 
-                placeholder="예: AI 기술의 미래 전망",
-                key="vector_search_test"
-            )
-        with col2:
-            test_k = st.number_input("검색 수:", min_value=1, max_value=10, value=3, key="test_k")
-        
-        if test_query and st.button("🔍 검색 테스트 실행"):
-            VectorStoreUI._run_search_test(vector_store_manager, test_query, test_k)
-    
-    @staticmethod
-    def _run_search_test(vector_store_manager, test_query, test_k):
-        """Run search test on loaded vector store."""
-        try:
-            with st.spinner("검색 중..."):
-                results = vector_store_manager.similarity_search_with_score(test_query, k=test_k)
+    def _display_search_test():
+        """Display search test functionality if vector store is loaded."""
+        if st.session_state.get("vector_store_created", False):
+            st.markdown("---")
+            st.subheader("🔍 벡터 스토어 검색 테스트")
             
-            if results:
-                st.success(f"✅ {len(results)}개 결과 발견")
-                
-                for i, (doc, score) in enumerate(results):
-                    with st.expander(f"📄 결과 {i+1} (유사도: {score:.3f})"):
-                        st.write(f"**출처:** {doc.metadata.get('source', 'Unknown')}")
-                        st.write(f"**페이지:** {doc.metadata.get('page_number', 'N/A')}")
-                        st.write(f"**내용 미리보기:**")
-                        preview = doc.page_content[:300] + "..." if len(doc.page_content) > 300 else doc.page_content
-                        st.text(preview)
-            else:
-                st.warning("검색 결과가 없습니다.")
-                
-        except Exception as e:
-            st.error(f"❌ 검색 테스트 실패: {str(e)}")
+            col1, col2 = st.columns([3, 1])
+            with col1:
+                test_query = st.text_input("테스트 검색어를 입력하세요:", placeholder="예: AI 트렌드", key="vs_search_query")
+            with col2:
+                test_k = st.slider("검색 문서 수:", 1, 10, st.session_state.get("top_k", DEFAULT_K), key="vs_search_k")
+            
+            if test_query and st.button("🔍 검색 테스트", key="vs_search_button"):
+                vector_store_manager = st.session_state.vector_store_manager
+                try:
+                    docs_with_score = vector_store_manager.similarity_search_with_score(test_query, k=test_k)
+                    
+                    st.write(f"### 📊 검색 결과 ({len(docs_with_score)}개)")
+                    
+                    for i, (doc, score) in enumerate(docs_with_score):
+                        with st.expander(f"📄 문서 {i+1}: {doc.metadata.get('source', 'Unknown')} (점수: {score:.3f})"):
+                            st.write(f"**유사도 점수:** {score:.4f}")
+                            st.write(f"**출처:** {doc.metadata.get('source', 'Unknown')}")
+                            st.write(f"**페이지:** {doc.metadata.get('page_number', 'N/A')}")
+                            st.write("**내용:**")
+                            content_preview = doc.page_content[:500] + "..." if len(doc.page_content) > 500 else doc.page_content
+                            st.text(content_preview)
+                            
+                except Exception as e:
+                    st.error(f"❌ 검색 테스트 실패: {str(e)}")
+            
+            # Current vector store status
+            with st.expander("📊 현재 벡터 스토어 상태"):
+                vector_store_manager = st.session_state.vector_store_manager
+                stats = vector_store_manager.get_collection_stats()
+                for key, value in stats.items():
+                    st.write(f"• **{key}**: {value}")
     
     @staticmethod
     def _display_manual_loading_option():
@@ -511,7 +492,7 @@ class VectorStoreUI:
                                 st.write(f"**크기:** {store_info.get('file_size_mb', 0):.1f} MB")
             
             with col2:
-                if st.button("🗑️ 선택 스토어 삭제", type="secondary"):
+                if st.button("🗑️ 선택된 벡터 스토어 삭제", type="secondary"):
                     for store_name in selected_stores:
                         store_path = VECTOR_STORES_FOLDER / store_name
                         success = VectorStoreManager.delete_vector_store(store_path)
@@ -519,43 +500,4 @@ class VectorStoreUI:
                             st.success(f"✅ {store_name} 삭제 완료")
                         else:
                             st.error(f"❌ {store_name} 삭제 실패")
-                    st.rerun()
-    
-    @staticmethod
-    def _display_search_test():
-        """Display search test functionality if vector store is loaded."""
-        if st.session_state.vector_store_created:
-            st.markdown("---")
-            st.subheader("🔍 벡터 스토어 검색 테스트")
-            
-            col1, col2 = st.columns([3, 1])
-            with col1:
-                test_query = st.text_input("테스트 검색어를 입력하세요:", placeholder="예: AI 트렌드")
-            with col2:
-                test_k = st.slider("검색 문서 수:", 1, 10, st.session_state.get("top_k", DEFAULT_K))
-            
-            if test_query and st.button("🔍 검색 테스트"):
-                vector_store_manager = st.session_state.vector_store_manager
-                try:
-                    docs_with_score = vector_store_manager.similarity_search_with_score(test_query, k=test_k)
-                    
-                    st.write(f"### 📊 검색 결과 ({len(docs_with_score)}개)")
-                    
-                    for i, (doc, score) in enumerate(docs_with_score):
-                        with st.expander(f"📄 문서 {i+1}: {doc.metadata.get('source', 'Unknown')} (점수: {score:.3f})"):
-                            st.write(f"**유사도 점수:** {score:.4f}")
-                            st.write(f"**출처:** {doc.metadata.get('source', 'Unknown')}")
-                            st.write(f"**페이지:** {doc.metadata.get('page_number', 'N/A')}")
-                            st.write("**내용:**")
-                            content_preview = doc.page_content[:500] + "..." if len(doc.page_content) > 500 else doc.page_content
-                            st.text(content_preview)
-                            
-                except Exception as e:
-                    st.error(f"❌ 검색 테스트 실패: {str(e)}")
-            
-            # Current vector store status
-            with st.expander("📊 현재 벡터 스토어 상태"):
-                vector_store_manager = st.session_state.vector_store_manager
-                stats = vector_store_manager.get_collection_stats()
-                for key, value in stats.items():
-                    st.write(f"• **{key}**: {value}") 
+                    st.rerun() 

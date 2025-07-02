@@ -1,12 +1,18 @@
 """RAG experiment UI module for the RAG application."""
 
 import streamlit as st
+import time
+from typing import Dict, Any, Optional, List
 
 from ..config import *
 from ..utils.llm_manager import LLMManager
-from ..rag_systems.naive_rag import NaiveRAG
-from ..rag_systems.advanced_rag import AdvancedRAG
-from ..rag_systems.modular_rag import ModularRAG
+from ..utils.vector_store import VectorStoreManager
+from ..rag_systems.naive_rag import get_naive_rag_system_info
+from ..rag_systems.advanced_rag import get_advanced_rag_system_info
+from ..rag_systems.modular_rag import get_modular_rag_system_info, BM25
+from ..graphs.naive_rag_graph import create_naive_rag_graph
+from ..graphs.advanced_rag_graph import create_advanced_rag_graph
+from ..graphs.modular_rag_graph import create_modular_rag_graph
 
 
 class RAGExperimentUI:
@@ -17,20 +23,19 @@ class RAGExperimentUI:
         """RAG experiment tab with various systems."""
         st.header("🧪 RAG 시스템 실험")
         
-        # Check vector store availability
-        if not RAGExperimentUI._check_vector_store():
-            return
+        # 벡터 스토어 상태를 확인하고 UI에 표시
+        is_ready = RAGExperimentUI._check_vector_store()
         
-        # Initialize RAG systems
-        RAGExperimentUI._initialize_rag_systems()
+        # 벡터 스토어가 준비되었을 때만 RAG 시스템 초기화
+        if is_ready:
+            RAGExperimentUI._initialize_rag_systems()
         
-        # Display experiment interface
-        RAGExperimentUI._display_experiment_interface()
+        # 항상 실험 인터페이스를 표시
+        RAGExperimentUI._display_experiment_interface(is_ready)
     
     @staticmethod
     def _check_vector_store():
-        """Check if vector store is available."""
-        # First check if we have a vector store manager with actual vector store
+        """벡터 스토어 상태를 확인하고 UI에 표시하며, 준비 여부를 반환합니다."""
         vector_store_manager = st.session_state.get("vector_store_manager")
         vector_store = None
         
@@ -39,22 +44,15 @@ class RAGExperimentUI:
                 vector_store = vector_store_manager.get_vector_store()
             except Exception as e:
                 st.warning(f"⚠️ 기존 벡터 스토어 확인 실패: {str(e)}")
-                vector_store = None
         
-        # If no vector store exists, show warning
         if vector_store is None:
             st.warning("📋 벡터 스토어가 필요합니다.")
-            st.info("**다음 중 하나를 수행하세요:**")
-            st.markdown("""
-            1. **📚 문서 로딩** 탭에서 문서를 로드한 후 **🔍 벡터 스토어** 탭에서 새 벡터 스토어 생성
-            2. **🔍 벡터 스토어** 탭에서 기존에 저장된 벡터 스토어 로딩
-            """)
+            st.info("**다음 중 하나를 수행하세요:**\n"
+                     "1. **📚 문서 로딩** 탭에서 문서를 로드한 후 **🔍 벡터 스토어** 탭에서 새 벡터 스토어 생성\n"
+                     "2. **🔍 벡터 스토어** 탭에서 기존에 저장된 벡터 스토어 로딩")
             return False
         
-        # Display vector store info
         st.success("✅ 벡터 스토어 준비 완료!")
-        
-        # Show current vector store status
         RAGExperimentUI._display_vector_store_status(vector_store)
         return True
     
@@ -232,48 +230,68 @@ class RAGExperimentUI:
             vector_store_manager = st.session_state.vector_store_manager
             
             st.session_state.rag_systems = {
-                "Naive RAG": NaiveRAG(vector_store_manager, llm_manager),
-                "Advanced RAG": AdvancedRAG(vector_store_manager, llm_manager),
-                "Modular RAG": ModularRAG(vector_store_manager, llm_manager)
+                "Naive RAG": get_naive_rag_system_info(),
+                "Advanced RAG": get_advanced_rag_system_info(),
+                "Modular RAG": get_modular_rag_system_info()
             }
             
             # Track the vector store ID used for RAG systems
             st.session_state.last_rag_vector_store_id = current_vector_store_id
     
     @staticmethod
-    def _display_experiment_interface():
+    def _display_experiment_interface(is_ready: bool):
         """Display the main experiment interface."""
         # System selection
         st.subheader("🎯 실험 설정")
-        
-        # Get RAG systems safely
-        rag_systems = st.session_state.get("rag_systems", {})
-        
-        if not rag_systems:
-            st.warning("⚠️ RAG 시스템이 초기화되지 않았습니다. 벡터 스토어를 먼저 확인해주세요.")
-            return
-        
-        col1, col2 = st.columns(2)
-        with col1:
-            selected_systems = st.multiselect(
-                "테스트할 RAG 시스템 선택:",
-                list(rag_systems.keys()),
-                default=list(rag_systems.keys())
-            )
-        
-        with col2:
-            retrieval_k = st.slider("검색할 문서 수 (k):", 1, 15, st.session_state.top_k)
-        
-        # Display sample queries
-        RAGExperimentUI._display_sample_queries()
-        
-        # Query input
-        query = RAGExperimentUI._display_query_input()
-        
-        # Run experiment
-        if query and selected_systems and st.button("🚀 실험 실행", type="primary"):
-            RAGExperimentUI._run_experiment(query, selected_systems, retrieval_k)
-    
+
+        # Disable inputs if the system is not ready
+        with st.container(border=True):
+            if not is_ready:
+                st.info("실험을 진행하려면 먼저 위의 안내에 따라 벡터 스토어를 준비해주세요.")
+
+            rag_systems = st.session_state.get("rag_systems", {
+                "Naive RAG": get_naive_rag_system_info(),
+                "Advanced RAG": get_advanced_rag_system_info(),
+                "Modular RAG": get_modular_rag_system_info()
+            })
+
+            col1, col2 = st.columns(2)
+            with col1:
+                selected_systems = st.multiselect(
+                    "테스트할 RAG 시스템 선택:",
+                    list(rag_systems.keys()),
+                    default=list(rag_systems.keys()),
+                    disabled=not is_ready
+                )
+            
+            with col2:
+                retrieval_k = st.slider("검색할 문서 수 (k):", 1, 15, st.session_state.get("top_k", 5), disabled=not is_ready)
+            
+            # BM25 Indexing for Modular RAG
+            if "Modular RAG" in selected_systems:
+                st.subheader("🔑 Modular RAG: BM25 인덱싱")
+                if is_ready:
+                    RAGExperimentUI._manage_bm25_indexing()
+                else:
+                    st.info("BM25 인덱싱은 벡터 스토어가 준비된 후에 가능합니다.")
+
+            # Display sample queries
+            RAGExperimentUI._display_sample_queries()
+            
+            # Query input
+            query = RAGExperimentUI._display_query_input()
+            
+            # Run experiment
+            if st.button("🚀 실험 실행", type="primary", use_container_width=True):
+                if not is_ready:
+                    st.error("❌ 벡터 스토어가 준비되지 않았습니다. 실험을 실행할 수 없습니다.")
+                elif not query:
+                    st.warning("⚠️ 질문을 입력해주세요.")
+                elif not selected_systems:
+                    st.warning("⚠️ 하나 이상의 RAG 시스템을 선택해주세요.")
+                else:
+                    RAGExperimentUI._run_experiment(query, selected_systems, retrieval_k)
+
     @staticmethod
     def _display_sample_queries():
         """Display sample queries categorized by type."""
@@ -338,6 +356,11 @@ class RAGExperimentUI:
     @staticmethod
     def _run_experiment(query, selected_systems, retrieval_k):
         """Run the RAG experiment with selected systems."""
+        # This check is now the primary guard before running.
+        if "vector_store_manager" not in st.session_state or not st.session_state.vector_store_manager.get_vector_store():
+            st.error("❌ 벡터 스토어가 설정되지 않았습니다. 먼저 벡터 스토어를 생성하거나 로드해주세요.")
+            return
+
         results = []
         
         # Get RAG systems safely
@@ -357,18 +380,56 @@ class RAGExperimentUI:
             rag_system = rag_systems[system_name]
             
             try:
-                if system_name == "Advanced RAG":
-                    result = rag_system.query(query, k=retrieval_k*2, rerank_top_k=retrieval_k)
-                elif system_name == "Modular RAG":
-                    result = rag_system.query(query, max_iterations=2)
-                else:
-                    result = rag_system.query(query, k=retrieval_k)
+                with st.spinner(f"{system_name} 실행 중... 답변을 생성하고 있습니다."):
+                    if system_name == "Naive RAG":
+                        selected_model = st.session_state.get("selected_llm_model", DEFAULT_LLM_MODEL)
+                        llm_temperature = st.session_state.get("llm_temperature", 0.1)
+                        llm_manager = LLMManager(selected_model, OLLAMA_BASE_URL, temperature=llm_temperature)
+                        vector_store_manager = st.session_state.vector_store_manager
+                        
+                        result = RAGExperimentUI._run_naive_rag(query, retrieval_k, llm_manager, vector_store_manager)
+
+                    elif system_name == "Advanced RAG":
+                        selected_model = st.session_state.get("selected_llm_model", DEFAULT_LLM_MODEL)
+                        llm_temperature = st.session_state.get("llm_temperature", 0.1)
+                        llm_manager = LLMManager(selected_model, OLLAMA_BASE_URL, temperature=llm_temperature)
+                        vector_store_manager = st.session_state.vector_store_manager
+
+                        result = RAGExperimentUI._run_advanced_rag(query, retrieval_k * 2, retrieval_k, llm_manager, vector_store_manager)
+                        
+                    elif system_name == "Modular RAG":
+                        if "bm25_index" not in st.session_state or "bm25_documents" not in st.session_state:
+                            st.error("❌ Modular RAG를 실행하려면 먼저 BM25 인덱스를 생성해야 합니다.")
+                            continue
+
+                        selected_model = st.session_state.get("selected_llm_model", DEFAULT_LLM_MODEL)
+                        llm_temperature = st.session_state.get("llm_temperature", 0.1)
+                        llm_manager = LLMManager(selected_model, OLLAMA_BASE_URL, temperature=llm_temperature)
+                        vector_store_manager = st.session_state.vector_store_manager
+                        bm25_index = st.session_state.bm25_index
+                        bm25_documents = st.session_state.bm25_documents
+
+                        result = RAGExperimentUI._run_modular_rag(
+                            query, 2, llm_manager, vector_store_manager, bm25_index, bm25_documents
+                        )
+                    else:
+                        # Fallback for any other system that might still use the old class structure
+                        result = rag_system.query(query, k=retrieval_k)
                 
                 results.append(result)
                 
                 # Display individual result
-                st.write(f"**답변:** {result['answer']}")
-                st.write(f"**처리 시간:** {result['total_time']:.2f}초")
+                st.write(f"**답변:**")
+                st.info(result.get('answer', '답변을 생성하지 못했습니다.'))
+                st.write(f"**처리 시간:** {result.get('total_time', 0):.2f}초")
+                
+                retrieved_docs = result.get("retrieved_docs", [])
+                if retrieved_docs:
+                    with st.expander(f"검색된 문서 ({len(retrieved_docs)}개)"):
+                        for i, doc in enumerate(retrieved_docs):
+                            st.write(f"**문서 {i+1} (출처: {doc.metadata.get('source', 'Unknown')})**")
+                            st.text(doc.page_content[:200] + "...")
+                            st.divider()
                 
             except Exception as e:
                 st.error(f"{system_name} 실행 실패: {str(e)}")
@@ -381,4 +442,234 @@ class RAGExperimentUI:
         # Store results
         if results:
             st.session_state.experiment_results = results
-            st.success("✅ 모든 실험 완료!") 
+            st.success("✅ 모든 실험 완료!")
+    
+    @staticmethod
+    def _manage_bm25_indexing():
+        """UI for managing the BM25 index required for Modular RAG."""
+        bm25_index = st.session_state.get("bm25_index")
+        bm25_docs_count = len(st.session_state.get("bm25_documents", []))
+
+        if bm25_index:
+            st.success(f"✅ BM25 인덱스가 준비되었습니다. ({bm25_docs_count}개 문서 인덱싱됨)")
+            if st.button("🔄 BM25 인덱스 재생성"):
+                st.session_state.pop("bm25_index", None)
+                st.session_state.pop("bm25_documents", None)
+                st.rerun()
+        else:
+            st.warning("BM25 키워드 검색을 위해 인덱스 생성이 필요합니다.")
+            if st.button("🚀 BM25 인덱스 생성"):
+                try:
+                    with st.spinner("벡터 스토어에서 문서를 로드하여 BM25 인덱스를 생성합니다..."):
+                        vector_store_manager = st.session_state.get("vector_store_manager")
+                        if not vector_store_manager:
+                            st.error("벡터 스토어 매니저를 찾을 수 없습니다.")
+                            return
+
+                        vector_store = vector_store_manager.get_vector_store()
+                        
+                        # 벡터 스토어의 모든 문서를 가져오기 위해 전체 문서 수를 먼저 확인합니다.
+                        # 이는 특정 벡터스토어 구현에 대한 의존성을 줄입니다.
+                        stats = vector_store_manager.get_collection_stats()
+                        total_docs = stats.get("document_count", 1000) # Fallback
+                        
+                        if total_docs == 0:
+                            st.error("인덱싱할 문서가 벡터 스토어에 없습니다.")
+                            return
+
+                        docs = vector_store.similarity_search("", k=total_docs)
+                        
+                        if not docs:
+                            st.error("벡터 스토어에서 문서를 가져오지 못했습니다.")
+                            return
+                        
+                        corpus = [doc.page_content for doc in docs]
+                        st.session_state.bm25_index = BM25(corpus)
+                        st.session_state.bm25_documents = docs
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"BM25 인덱스 생성 실패: {e}")
+                    if "bm25_index" in st.session_state:
+                        del st.session_state.bm25_index
+                    if "bm25_documents" in st.session_state:
+                        del st.session_state.bm25_documents
+    
+    @staticmethod
+    def _run_modular_rag(query: str, max_iterations: int, llm_manager: LLMManager, vector_store_manager: VectorStoreManager, bm25_index: BM25, bm25_docs: List[Any]) -> Dict[str, Any]:
+        """Run the Modular RAG using the compiled graph and display progress via streaming."""
+        start_time = time.time()
+        
+        modular_rag_graph = create_modular_rag_graph(llm_manager, vector_store_manager, bm25_index, bm25_docs)
+        inputs = {"query": query, "max_iterations": max_iterations}
+        
+        st.subheader("🧩 모듈형 RAG 처리 과정")
+        
+        # Placeholders for real-time updates
+        preprocess_placeholder = st.empty()
+        iteration_placeholder = st.empty()
+        final_summary_placeholder = st.empty()
+        
+        final_state = {}
+        with st.spinner("Modular RAG 그래프 실행 중..."):
+            for state in modular_rag_graph.stream(inputs):
+                node_name, node_output = list(state.items())[0]
+                final_state.update(node_output)
+
+                with preprocess_placeholder.container(border=True):
+                    st.write("**1단계: 사전 검색 처리**")
+                    st.info(f"쿼리 확장: {final_state.get('expanded_query', '...')}")
+                    st.info(f"쿼리 유형: {final_state.get('query_type', '...')} (신뢰도: {final_state.get('classification_confidence', 0):.2f})")
+
+                with iteration_placeholder.container(border=True):
+                    st.write(f"**2단계: 반복적 개선 (현재 {final_state.get('iteration', 0) + 1}번째 실행 중)**")
+                    if node_name == "retrieve_and_process":
+                        st.success(f"문서 검색 및 처리 완료: {len(final_state.get('retrieved_docs', []))}개 문서 선택됨")
+                    if node_name == "generate":
+                        st.success("답변 생성 완료")
+                        st.info(f"중간 답변: {final_state.get('answer', '')[:100]}...")
+                        st.warning(f"현재 신뢰도: {final_state.get('final_confidence', 0):.2f}")
+
+        # Final display after streaming is complete
+        iteration_placeholder.empty()
+        preprocess_placeholder.empty()
+
+        st.write("**1단계: 사전 검색 처리**")
+        st.info(f"쿼리 확장: {final_state.get('expanded_query')}")
+        st.info(f"쿼리 유형: {final_state.get('query_type')} (신뢰도: {final_state.get('classification_confidence', 0):.2f})")
+
+        st.write(f"**2단계: 반복적 개선 (총 {final_state.get('iteration', 0) + 1}회 실행)**")
+
+        st.subheader("🤖 최종 답변")
+        answer = final_state.get("answer", "답변을 생성하지 못했습니다.")
+        st.markdown(answer)
+        
+        st.subheader("📈 최종 결과 요약")
+        total_time = time.time() - start_time
+        all_retrieved_docs = final_state.get("all_retrieved_docs", [])
+        
+        col1, col2, col3 = st.columns(3)
+        col1.metric("총 처리 시간", f"{total_time:.2f}초")
+        col2.metric("총 반복 횟수", final_state.get('iteration', 0) + 1)
+        col3.metric("최종 신뢰도", f"{final_state.get('final_confidence', 0):.2f}")
+
+        with st.expander(f"최종 검색된 문서 보기 ({len(all_retrieved_docs)}개)"):
+            for i, doc in enumerate(all_retrieved_docs):
+                st.write(f"**문서 {i+1} (출처: {doc.metadata.get('source', 'Unknown')})**")
+                st.text(doc.page_content[:200] + "...")
+                st.divider()
+
+        system_info = get_modular_rag_system_info()
+        return {
+            "question": query,
+            "answer": answer,
+            "retrieved_docs": all_retrieved_docs,
+            "total_time": total_time,
+            "rag_type": system_info["name"],
+            "metadata": {
+                "iterations": final_state.get("iteration", 0),
+                "final_confidence": final_state.get("final_confidence", 0.0),
+                "query_type": final_state.get("query_type", "general"),
+                "total_retrieved": len(all_retrieved_docs),
+                "expansion_terms": final_state.get("expansion_terms", [])
+            }
+        }
+
+    @staticmethod
+    def _run_advanced_rag(query: str, k: int, rerank_top_k: int, llm_manager: LLMManager, vector_store_manager: VectorStoreManager) -> Dict[str, Any]:
+        """Run the Advanced RAG using the compiled graph and display progress."""
+        start_time = time.time()
+        
+        advanced_rag_graph = create_advanced_rag_graph(llm_manager, vector_store_manager)
+        
+        inputs = {"query": query, "k": k, "rerank_top_k": rerank_top_k}
+        
+        final_state = {}
+        with st.spinner("Advanced RAG 그래프 실행 중..."):
+            final_state = advanced_rag_graph.invoke(inputs)
+
+        # 1. 쿼리 전처리 결과 표시
+        st.subheader("🔧 1단계: 쿼리 전처리")
+        preprocess_details = final_state.get("preprocessing_details", {})
+        optimized_query = final_state.get("optimized_query")
+
+        if optimized_query != query:
+            st.success(f"쿼리 최적화 완료")
+            with st.expander("쿼리 확장 상세 정보 보기"):
+                st.write(f"- **원본 쿼리:** `{preprocess_details.get('original_query')}`")
+                st.write(f"- **선택된 확장 용어:** `{preprocess_details.get('selected_terms')}`")
+                st.write(f"- **최종 확장 쿼리:** `{optimized_query}`")
+        else:
+            st.info("쿼리 최적화: 변경사항 없음")
+        
+        # 2. 문서 검색 결과
+        st.subheader("🔍 2단계: 문서 검색")
+        docs_with_scores = final_state.get("docs_with_scores", [])
+        st.success(f"초기 검색: {len(docs_with_scores)}개 문서")
+
+        # 3. 문서 재순위화 결과
+        st.subheader("📊 3단계: 문서 재순위화")
+        reranked_docs = final_state.get("reranked_docs", [])
+        st.success(f"재순위화 완료: 상위 {len(reranked_docs)}개 문서 선택")
+
+        with st.expander(f"재순위화된 문서 ({len(reranked_docs)}개)"):
+            for i, doc in enumerate(reranked_docs):
+                st.write(f"**문서 {i+1} (출처: {doc.metadata.get('source', 'Unknown')})**")
+                st.text(doc.page_content[:200] + "...")
+                st.divider()
+
+        # 4. 컨텍스트 압축 결과
+        st.subheader("🗜️ 4단계: 컨텍스트 압축")
+        compression_ratio = final_state.get("compression_ratio", 0)
+        st.info(f"압축률: {compression_ratio:.2%}")
+        
+        # 5. 최종 답변
+        st.subheader("🤖 5단계: 답변 생성")
+        answer = final_state.get("answer", "답변을 생성하지 못했습니다.")
+        
+        total_time = time.time() - start_time
+
+        system_info = get_advanced_rag_system_info()
+        return {
+            "question": query,
+            "answer": answer,
+            "retrieved_docs": reranked_docs,
+            "total_time": total_time,
+            "rag_type": system_info["name"],
+            "metadata": {
+                "optimized_query": optimized_query,
+                "initial_retrieved": len(docs_with_scores),
+                "final_retrieved": len(reranked_docs),
+                "compression_ratio": compression_ratio,
+                "retrieval_method": "similarity_search + reranking",
+                "generation_method": "reasoning-based"
+            }
+        }
+
+    @staticmethod
+    def _run_naive_rag(query: str, k: int, llm_manager: LLMManager, vector_store_manager: VectorStoreManager) -> Dict[str, Any]:
+        """Run the Naive RAG using the compiled graph and return results."""
+        start_time = time.time()
+        
+        naive_rag_graph = create_naive_rag_graph(llm_manager, vector_store_manager)
+        
+        inputs = {"query": query, "k": k}
+        final_state = naive_rag_graph.invoke(inputs)
+
+        end_time = time.time()
+        total_time = end_time - start_time
+
+        retrieved_docs = final_state.get("documents", [])
+        system_info = get_naive_rag_system_info()
+        
+        return {
+            "question": query,
+            "answer": final_state.get("answer"),
+            "retrieved_docs": retrieved_docs,
+            "total_time": total_time,
+            "rag_type": system_info["name"],
+            "metadata": {
+                "num_retrieved": len(retrieved_docs),
+                "retrieval_method": "similarity_search",
+                "generation_method": "simple"
+            }
+        }

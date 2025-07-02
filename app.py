@@ -17,9 +17,7 @@ from src.utils.embeddings import EmbeddingManager
 from src.utils.vector_store import VectorStoreManager
 from src.utils.llm_manager import LLMManager
 from src.utils.font_utils import inject_custom_font
-from src.rag_systems.naive_rag import NaiveRAG
-from src.rag_systems.advanced_rag import AdvancedRAG
-from src.rag_systems.modular_rag import ModularRAG
+# from src.rag_systems.naive_rag import NaiveRAG # No longer needed
 from src.ui.comparison_ui import ComparisonUI
 from src.ui.about_ui import AboutUI
 from src.ui.document_loading_ui import DocumentLoadingUI
@@ -257,7 +255,8 @@ def main():
         json_services_ui.render()
     
     with tab8:
-        DocumentDiscoveryUI.display_document_discovery_tab()
+        document_discovery_ui = DocumentDiscoveryUI()
+        document_discovery_ui.render()
     
     with tab9:
         WebSearchUI.display_web_search_tab()

@@ -1,28 +1,24 @@
 """Report Generation UI module for the RAG application."""
 
 import streamlit as st
-import base64
-from typing import Dict, Any, List
-from datetime import datetime
 import json
+from datetime import datetime
+from typing import Dict, Any
 
-from ..config import *
-from ..utils.llm_manager import LLMManager
-from ..rag_systems.report_generation_rag import ReportGenerationRAG
-
+from ..config import OLLAMA_BASE_URL
+from ..graphs.report_generation_graph import run_report_generation_graph
+from ..utils.vector_store import VectorStoreManager
 
 class ReportGenerationUI:
-    """UI components for report generation functionality."""
-    
-    # Predefined report types with their characteristics
     REPORT_TYPES = {
         "연구보고서": {
             "description": "학술적 연구 결과를 체계적으로 정리한 보고서",
             "default_outline": [
                 {"title": "서론", "content_guide": "연구 배경, 목적, 필요성을 설명"},
                 {"title": "이론적 배경", "content_guide": "관련 이론과 선행 연구를 검토"},
-                {"title": "연구 방법", "content_guide": "연구 방법론과 절차를 설명"},
+                {"title": "연구 방법론", "content_guide": "연구 설계, 데이터 수집 및 분석 방법"},
                 {"title": "연구 결과", "content_guide": "연구를 통해 얻은 결과를 제시"},
+                {"title": "논의", "content_guide": "결과 해석 및 이론적/실무적 함의"},
                 {"title": "결론 및 제언", "content_guide": "연구 결과를 종합하고 향후 과제를 제시"}
             ]
         },
@@ -30,20 +26,12 @@ class ReportGenerationUI:
             "description": "특정 시장의 현황과 전망을 분석한 보고서",
             "default_outline": [
                 {"title": "시장 개요", "content_guide": "시장의 기본 현황과 규모를 소개"},
+                {"title": "시장 환경 분석", "content_guide": "PEST 분석 (정치, 경제, 사회, 기술)"},
                 {"title": "시장 동향", "content_guide": "최근 시장 변화와 트렌드를 분석"},
                 {"title": "경쟁 현황", "content_guide": "주요 경쟁업체와 경쟁 구조를 분석"},
-                {"title": "SWOT 분석", "content_guide": "시장의 강점, 약점, 기회, 위협을 분석"},
-                {"title": "시장 전망", "content_guide": "향후 시장 전망과 성장 가능성을 예측"}
-            ]
-        },
-        "정책보고서": {
-            "description": "정책 방향과 대안을 제시하는 보고서",
-            "default_outline": [
-                {"title": "정책 현황", "content_guide": "현재 정책 상황과 문제점을 분석"},
-                {"title": "환경 분석", "content_guide": "정책 환경과 영향 요인을 분석"},
-                {"title": "정책 대안", "content_guide": "가능한 정책 대안들을 제시"},
-                {"title": "효과 분석", "content_guide": "각 대안의 예상 효과를 분석"},
-                {"title": "정책 제언", "content_guide": "최적 정책안과 실행 방안을 제안"}
+                {"title": "소비자 분석", "content_guide": "고객 세그먼트, 니즈, 행동 패턴"},
+                {"title": "시장 전망", "content_guide": "향후 시장 전망과 성장 가능성을 예측"},
+                {"title": "전략적 제언", "content_guide": "시장 진입/확장 전략 및 리스크 관리"}
             ]
         },
         "기술동향보고서": {
@@ -52,455 +40,224 @@ class ReportGenerationUI:
                 {"title": "기술 개요", "content_guide": "기술의 정의와 특징을 설명"},
                 {"title": "기술 현황", "content_guide": "현재 기술 개발 수준과 상용화 현황"},
                 {"title": "주요 동향", "content_guide": "최신 기술 동향과 혁신 사례"},
-                {"title": "시장 현황", "content_guide": "기술 관련 시장 규모와 전망"},
-                {"title": "향후 전망", "content_guide": "기술 발전 방향과 미래 전망"}
+                {"title": "핵심 기술 분석", "content_guide": "주요 기술 요소와 성능 지표"},
+                {"title": "응용 분야", "content_guide": "기술의 다양한 응용 사례와 산업 활용"},
+                {"title": "향후 전망", "content_guide": "기술 발전 방향과 미래 전망"},
+                {"title": "정책 및 투자 동향", "content_guide": "관련 정책, 투자 현황, 표준화 동향"}
             ]
         },
-        "사업계획서": {
-            "description": "사업의 목적과 실행 계획을 담은 보고서",
+        "정책분석보고서": {
+            "description": "정책의 효과성과 영향을 종합적으로 분석한 보고서",
             "default_outline": [
-                {"title": "사업 개요", "content_guide": "사업의 목적, 비전, 목표를 설명"},
-                {"title": "시장 분석", "content_guide": "목표 시장과 고객을 분석"},
-                {"title": "사업 전략", "content_guide": "차별화 전략과 경쟁 우위를 설명"},
-                {"title": "운영 계획", "content_guide": "사업 운영 방식과 조직을 설명"},
-                {"title": "재무 계획", "content_guide": "수익 모델과 재무 전망을 제시"}
+                {"title": "정책 개요", "content_guide": "정책의 목적, 배경, 주요 내용"},
+                {"title": "정책 환경 분석", "content_guide": "정책 수립 배경과 사회적 맥락"},
+                {"title": "정책 효과 분석", "content_guide": "정책 시행 결과와 성과 지표"},
+                {"title": "이해관계자 분석", "content_guide": "정책의 영향받는 주체들과 반응"},
+                {"title": "비용-효과 분석", "content_guide": "정책 비용과 기대 효과의 비교"},
+                {"title": "정책 개선 방안", "content_guide": "현재 정책의 문제점과 개선 제안"},
+                {"title": "향후 정책 방향", "content_guide": "정책 발전 방향과 제언"}
             ]
         },
-        "백서(White Paper)": {
-            "description": "특정 주제에 대한 공식적이고 권위있는 문서",
+        "경영전략보고서": {
+            "description": "기업의 경영 전략과 비즈니스 모델을 분석한 보고서",
             "default_outline": [
-                {"title": "개요", "content_guide": "주제의 배경과 중요성을 설명"},
-                {"title": "현황 분석", "content_guide": "현재 상황과 주요 이슈를 분석"},
-                {"title": "핵심 내용", "content_guide": "주제의 핵심 내용과 세부사항을 설명"},
-                {"title": "사례 연구", "content_guide": "관련 사례와 교훈을 제시"},
-                {"title": "향후 방향", "content_guide": "미래 전망과 권고사항을 제시"}
+                {"title": "기업 개요", "content_guide": "기업의 비전, 미션, 핵심 가치"},
+                {"title": "환경 분석", "content_guide": "SWOT 분석 및 산업 환경 분석"},
+                {"title": "현재 전략 분석", "content_guide": "기존 전략의 성과와 한계점"},
+                {"title": "핵심 역량", "content_guide": "기업의 핵심 경쟁력과 차별화 요소"},
+                {"title": "전략적 제안", "content_guide": "새로운 전략 방향과 실행 계획"},
+                {"title": "리스크 관리", "content_guide": "전략 실행 시 예상 리스크와 대응 방안"},
+                {"title": "성과 측정", "content_guide": "전략 성과 측정 지표와 모니터링 체계"}
             ]
-        }
+        },
+        "투자분석보고서": {
+            "description": "투자 대상의 가치와 투자 위험을 분석한 보고서",
+            "default_outline": [
+                {"title": "투자 대상 개요", "content_guide": "투자 대상의 사업 영역과 현황"},
+                {"title": "재무 분석", "content_guide": "재무제표 분석 및 재무 건전성 평가"},
+                {"title": "산업 분석", "content_guide": "해당 산업의 성장성과 경쟁 구조"},
+                {"title": "가치 평가", "content_guide": "DCF, P/E 등 다양한 가치 평가 모델"},
+                {"title": "리스크 분석", "content_guide": "투자 위험 요소와 리스크 관리 방안"},
+                {"title": "투자 의견", "content_guide": "투자 권고 사항과 투자 전략"},
+                {"title": "투자 후 모니터링", "content_guide": "투자 후 추적 관리 방안"}
+            ]
+        },
+        "환경영향평가보고서": {
+            "description": "사업이나 정책의 환경적 영향을 평가한 보고서",
+            "default_outline": [
+                {"title": "사업 개요", "content_guide": "평가 대상 사업의 내용과 규모"},
+                {"title": "환경 현황", "content_guide": "사업 지역의 환경 현황과 특성"},
+                {"title": "환경 영향 예측", "content_guide": "사업 시행 시 예상되는 환경 영향"},
+                {"title": "대기환경 영향", "content_guide": "대기질 변화 및 영향 분석"},
+                {"title": "수환경 영향", "content_guide": "수질 변화 및 수생태계 영향"},
+                {"title": "생태계 영향", "content_guide": "육상생태계 및 생물다양성 영향"},
+                {"title": "환경 보전 대책", "content_guide": "환경 영향 최소화 방안과 보전 대책"},
+                {"title": "환경 관리 계획", "content_guide": "사업 시행 중 환경 관리 방안"}
+            ]
+        },
+        "디지털전환보고서": {
+            "description": "기업의 디지털 전환 현황과 전략을 분석한 보고서",
+            "default_outline": [
+                {"title": "디지털 전환 개요", "content_guide": "디지털 전환의 정의와 필요성"},
+                {"title": "현재 상태 진단", "content_guide": "기업의 현재 디지털화 수준과 한계"},
+                {"title": "기술 인프라 분석", "content_guide": "현재 IT 인프라와 기술 스택 현황"},
+                {"title": "조직 문화 분석", "content_guide": "디지털 전환을 위한 조직 문화와 역량"},
+                {"title": "디지털 전환 전략", "content_guide": "단계별 디지털 전환 로드맵과 전략"},
+                {"title": "핵심 기술 도입", "content_guide": "AI, 클라우드, IoT 등 핵심 기술 도입 계획"},
+                {"title": "변경 관리", "content_guide": "조직 변화 관리와 직원 교육 계획"},
+                {"title": "성과 측정", "content_guide": "디지털 전환 성과 지표와 ROI 분석"}
+            ]
+        },
     }
-    
+
     @staticmethod
     def display_report_generation_tab():
-        """Display report generation tab."""
         st.header("📋 보고서 생성")
-        
-        # Check vector store availability
         if not ReportGenerationUI._check_vector_store():
             return
+
+        # This is the main router for the UI state.
+        if "generation_in_progress" in st.session_state and st.session_state.generation_in_progress:
+            # If generation is running, call the generation method which contains the spinner and stream handling.
+            ReportGenerationUI._generate_report(st.session_state.report_config)
+        elif "generated_report" in st.session_state:
+            # If a report is already generated, display it.
+            ReportGenerationUI._display_generated_report()
+        else:
+            # Otherwise, show the configuration UI.
+            ReportGenerationUI._display_report_configuration()
+            ReportGenerationUI._display_outline_configuration()
+            ReportGenerationUI._display_generation_interface()
+
+    @staticmethod
+    def _display_generated_report():
+        report_data = st.session_state.generated_report
+        st.success("✅ 보고서가 성공적으로 생성되었습니다.")
         
-        # Display report generation interface
-        ReportGenerationUI._display_report_configuration()
-    
+        with st.expander("📖 최종 보고서 보기", expanded=True):
+            st.markdown(report_data["content"])
+
+        ReportGenerationUI._display_download_options(report_data["content"], report_data["config"])
+
+        if st.button("🔄 새 보고서 생성하기", use_container_width=True):
+            # Clean up all related session state keys
+            for key in ["generated_report", "report_config", "generation_in_progress"]:
+                if key in st.session_state:
+                    del st.session_state[key]
+            st.rerun()
+
     @staticmethod
     def _check_vector_store():
-        """Check if vector store is available."""
-        vector_store_manager = st.session_state.get("vector_store_manager")
-        vector_store = None
-        
-        if vector_store_manager:
-            try:
-                vector_store = vector_store_manager.get_vector_store()
-            except Exception as e:
-                st.warning(f"⚠️ 기존 벡터 스토어 확인 실패: {str(e)}")
-                vector_store = None
-        
-        if vector_store is None:
-            st.warning("📋 벡터 스토어가 필요합니다.")
-            st.info("**다음 중 하나를 수행하세요:**")
-            st.markdown("""
-            1. **📚 문서 로딩** 탭에서 문서를 로드한 후 **🔍 벡터 스토어** 탭에서 새 벡터 스토어 생성
-            2. **🔍 벡터 스토어** 탭에서 기존에 저장된 벡터 스토어 로딩
-            """)
+        if not st.session_state.get("vector_store_manager") or not st.session_state.get("vector_store_manager").get_vector_store():
+            st.warning("보고서 생성을 위해 벡터 스토어를 먼저 로드하거나 생성해주세요.")
             return False
-        
-        # Display vector store info
         st.success("✅ 벡터 스토어 준비 완료!")
         return True
-    
+
     @staticmethod
     def _display_report_configuration():
-        """Display report configuration interface."""
-        st.subheader("📊 보고서 설정")
-        
-        # Initialize session state for report configuration
         if "report_config" not in st.session_state:
             st.session_state.report_config = {
-                "report_type": "연구보고서",
-                "topic": "",
-                "purpose": "정책 결정 지원",
-                "audience": "경영진/의사결정자",
-                "language": "한국어",
-                "target_length": "medium",
-                "include_visuals": False,
-                "citation_style": "simple",
-                "enable_streaming": True,
-                "outline": []
+                "report_type": "연구보고서", "topic": "", "purpose": "정책 결정 지원", "audience": "전문가", "language": "한국어",
+                "target_length": "medium", "include_visuals": False, "citation_style": "simple", "outline": []
             }
         
-        # Main configuration form
         with st.form("report_config_form"):
-            col1, col2 = st.columns(2)
+            st.subheader("📊 보고서 기본 설정")
+            selected_type = st.selectbox("보고서 유형:", options=list(ReportGenerationUI.REPORT_TYPES.keys()),
+                                         index=list(ReportGenerationUI.REPORT_TYPES.keys()).index(st.session_state.report_config.get("report_type", "연구보고서")))
+            st.info(ReportGenerationUI.REPORT_TYPES[selected_type]['description'])
             
-            with col1:
-                # Report Type
-                st.subheader("📝 보고서 유형")
-                selected_type = st.selectbox(
-                    "보고서 유형을 선택하세요:",
-                    options=list(ReportGenerationUI.REPORT_TYPES.keys()),
-                    index=list(ReportGenerationUI.REPORT_TYPES.keys()).index(
-                        st.session_state.report_config["report_type"]
-                    ),
-                    help="보고서 유형에 따라 기본 목차가 자동으로 설정됩니다."
-                )
-                
-                # Display description
-                if selected_type:
-                    st.info(f"💡 {ReportGenerationUI.REPORT_TYPES[selected_type]['description']}")
-                
-                # Topic
-                st.subheader("🎯 주제")
-                topic = st.text_input(
-                    "보고서의 주제를 입력하세요:",
-                    value=st.session_state.report_config["topic"],
-                    placeholder="예: 인공지능 산업 동향",
-                    help="구체적이고 명확한 주제를 입력하면 더 좋은 보고서가 생성됩니다."
-                )
-                
-                # Purpose
-                st.subheader("🎯 목적")
-                purpose = st.text_input(
-                    "보고서의 목적을 입력하세요:",
-                    value=st.session_state.report_config["purpose"],
-                    placeholder="예: 정책 결정 지원을 위한 시장 현황 파악"
-                )
+            topic = st.text_input("보고서 주제:", value=st.session_state.report_config.get("topic", ""), placeholder="예: 2025년 AI 산업 동향")
+            purpose = st.text_input("보고서 목적:", value=st.session_state.report_config.get("purpose", ""), placeholder="예: AI 정책 수립을 위한 기초 자료")
             
-            with col2:
-                # Audience
-                st.subheader("👥 대상 독자")
-                audience = st.text_input(
-                    "주요 대상 독자를 입력하세요:",
-                    value=st.session_state.report_config["audience"],
-                    placeholder="예: 경영진, 정책담당자, 투자자 등"
-                )
-                
-                # Language
-                st.subheader("🌐 언어")
-                language = st.selectbox(
-                    "보고서 작성 언어:",
-                    options=["한국어", "영어"],
-                    index=["한국어", "영어"].index(st.session_state.report_config["language"])
-                )
-                
-                # Target Length
-                st.subheader("📏 분량")
-                length_options = {
-                    "간단 (5-10페이지)": "short",
-                    "보통 (10-20페이지)": "medium", 
-                    "상세 (20-30페이지)": "long",
-                    "매우 상세 (30페이지 이상)": "very_long"
-                }
-                
-                length_option = st.selectbox(
-                    "목표 분량을 선택하세요:",
-                    options=list(length_options.keys()),
-                    index=list(length_options.values()).index(
-                        st.session_state.report_config["target_length"]
-                    ),
-                    help="분량에 따라 각 섹션의 상세도가 조절됩니다."
-                )
-                
-                # Additional Options
-                st.subheader("⚙️ 추가 옵션")
-                include_visuals = st.checkbox(
-                    "시각 요소 플레이스홀더 포함",
-                    value=st.session_state.report_config["include_visuals"],
-                    help="차트, 그래프 등을 위한 플레이스홀더를 추가합니다."
-                )
-                
-                enable_streaming = st.checkbox(
-                    "실시간 스트리밍 표시",
-                    value=st.session_state.report_config["enable_streaming"],
-                    help="보고서 생성 과정을 실시간으로 표시합니다."
-                )
-                
-                citation_style = st.selectbox(
-                    "인용 스타일:",
-                    options=["simple", "detailed", "none"],
-                    index=["simple", "detailed", "none"].index(st.session_state.report_config["citation_style"]),
-                    format_func=lambda x: {"simple": "간단", "detailed": "상세", "none": "없음"}[x],
-                    help="참고자료 표시 방식을 선택합니다."
-                )
-            
-            # Update session state
-            if st.form_submit_button("설정 저장", use_container_width=True):
+            st.subheader("⚙️ 보고서 상세 옵션")
+            audience = st.text_input("대상 독자:", value=st.session_state.report_config.get("audience", ""), placeholder="예: 정책 결정자, 투자자")
+            include_visuals = st.checkbox("시각 요소 플레이스홀더 포함", value=st.session_state.report_config.get("include_visuals", False))
+
+            if st.form_submit_button("설정 저장 및 목차 업데이트", use_container_width=True, type="primary"):
                 st.session_state.report_config.update({
-                    "report_type": selected_type,
-                    "topic": topic,
-                    "purpose": purpose,
-                    "audience": audience,
-                    "language": language,
-                    "target_length": length_options[length_option],
-                    "include_visuals": include_visuals,
-                    "enable_streaming": enable_streaming,
-                    "citation_style": citation_style
+                    "report_type": selected_type, "topic": topic, "purpose": purpose,
+                    "audience": audience, "include_visuals": include_visuals
                 })
-                
-                # Set default outline based on report type
                 if selected_type in ReportGenerationUI.REPORT_TYPES:
                     st.session_state.report_config["outline"] = ReportGenerationUI.REPORT_TYPES[selected_type]["default_outline"].copy()
-                
                 st.success("✅ 설정이 저장되었습니다!")
                 st.rerun()
-        
-        # Display outline configuration
-        ReportGenerationUI._display_outline_configuration()
-        
-        # Generate report button
-        ReportGenerationUI._display_generation_interface()
-    
+
     @staticmethod
     def _display_outline_configuration():
-        """Display outline configuration interface."""
         st.subheader("📑 목차 구성")
-        
-        config = st.session_state.report_config
-        
-        if not config.get("outline"):
-            st.info("먼저 보고서 설정을 저장하여 기본 목차를 불러오세요.")
+        if not st.session_state.report_config.get("outline"):
+            st.info("보고서 설정을 저장하면 기본 목차가 나타납니다.")
             return
+
+        for i, section in enumerate(st.session_state.report_config["outline"]):
+            with st.expander(f"📄 {i+1}. {section['title']}", expanded=True):
+                section["title"] = st.text_input("섹션 제목:", value=section["title"], key=f"title_{i}")
+                section["content_guide"] = st.text_area("내용 가이드:", value=section["content_guide"], key=f"guide_{i}")
         
-        st.write(f"**{config['report_type']}**의 기본 목차입니다. 필요에 따라 수정하거나 추가할 수 있습니다.")
-        
-        # Display current outline
-        for i, section in enumerate(config["outline"]):
-            with st.expander(f"📄 {i+1}. {section['title']}", expanded=False):
-                col1, col2 = st.columns([4, 1])
-                
-                with col1:
-                    # Edit section title
-                    new_title = st.text_input(
-                        "섹션 제목:",
-                        value=section["title"],
-                        key=f"section_title_{i}"
-                    )
-                    
-                    # Edit content guide
-                    new_guide = st.text_area(
-                        "내용 가이드:",
-                        value=section["content_guide"],
-                        key=f"section_guide_{i}",
-                        help="이 섹션에 어떤 내용이 포함되어야 하는지 설명해주세요."
-                    )
-                
-                with col2:
-                    # Delete button
-                    if st.button("🗑️ 삭제", key=f"delete_{i}", disabled=len(config["outline"]) <= 1):
-                        config["outline"].pop(i)
-                        st.rerun()
-                
-                # Update section info
-                config["outline"][i] = {
-                    "title": new_title,
-                    "content_guide": new_guide
-                }
-        
-        # Add new section
-        st.write("---")
-        with st.form("add_section_form"):
-            st.write("**새 섹션 추가**")
-            col1, col2 = st.columns([3, 1])
-            
-            with col1:
-                new_section_title = st.text_input("섹션 제목:", placeholder="예: 시사점")
-                new_section_guide = st.text_area("내용 가이드:", placeholder="예: 분석 결과의 시사점을 도출하고 의미를 해석")
-            
-            with col2:
-                if st.form_submit_button("섹션 추가", use_container_width=True):
-                    if new_section_title and new_section_guide:
-                        config["outline"].append({
-                            "title": new_section_title,
-                            "content_guide": new_section_guide
-                        })
-                        st.success(f"✅ '{new_section_title}' 섹션이 추가되었습니다!")
-                        st.rerun()
-                    else:
-                        st.error("섹션 제목과 내용 가이드를 모두 입력해주세요.")
-    
+        # Logic to add/remove sections can be added here if needed.
+
     @staticmethod
     def _display_generation_interface():
-        """Display report generation interface."""
-        st.subheader("🚀 보고서 생성")
-        
-        config = st.session_state.report_config
-        
-        # Display current configuration summary
-        with st.expander("📋 현재 설정 요약", expanded=False):
-            col1, col2 = st.columns(2)
-            
-            with col1:
-                st.write(f"**보고서 유형:** {config['report_type']}")
-                st.write(f"**주제:** {config.get('topic', 'N/A')}")
-                st.write(f"**목적:** {config.get('purpose', 'N/A')}")
-                st.write(f"**대상 독자:** {config.get('audience', 'N/A')}")
-            
-            with col2:
-                length_map = {
-                    "short": "간단 (5-10페이지)",
-                    "medium": "보통 (10-20페이지)",
-                    "long": "상세 (20-30페이지)",
-                    "very_long": "매우 상세 (30페이지 이상)"
-                }
-                citation_map = {
-                    "simple": "간단",
-                    "detailed": "상세",
-                    "none": "없음"
-                }
-                st.write(f"**언어:** {config['language']}")
-                st.write(f"**분량:** {length_map.get(config['target_length'], 'N/A')}")
-                st.write(f"**시각 요소:** {'포함' if config['include_visuals'] else '미포함'}")
-                st.write(f"**실시간 스트리밍:** {'활성화' if config.get('enable_streaming', True) else '비활성화'}")
-                st.write(f"**인용 스타일:** {citation_map.get(config['citation_style'], 'N/A')}")
-            
-            st.write(f"**목차 구성:** {len(config.get('outline', []))}개 섹션")
-            for i, section in enumerate(config.get('outline', []), 1):
-                st.write(f"  {i}. {section['title']}")
-        
-        # Validation
-        ready_to_generate = True
-        issues = []
-        
-        if not config.get('topic'):
-            issues.append("주제가 입력되지 않았습니다.")
-            ready_to_generate = False
-        
-        if not config.get('outline'):
-            issues.append("목차가 구성되지 않았습니다.")
-            ready_to_generate = False
-        
-        if issues:
-            st.error("❌ 다음 사항을 확인해주세요:")
-            for issue in issues:
-                st.write(f"- {issue}")
-        
-        # Generate button
-        if st.button(
-            "📋 보고서 생성하기",
-            disabled=not ready_to_generate,
-            use_container_width=True,
-            type="primary"
-        ) and ready_to_generate:
-            ReportGenerationUI._generate_report(config)
-    
+        st.subheader("🚀 보고서 생성 실행")
+        if not st.session_state.report_config.get('topic'):
+            st.warning("보고서를 생성하려면 먼저 주제를 입력하고 설정을 저장해주세요.")
+            return
+
+        if st.button("📋 보고서 생성하기", use_container_width=True, type="primary"):
+            # Set a flag to indicate generation is in progress and rerun.
+            st.session_state.generation_in_progress = True
+            st.rerun()
+
     @staticmethod
     def _generate_report(config: Dict[str, Any]):
-        """Generate report based on configuration."""
         try:
-            # Initialize RAG system
             vector_store_manager = st.session_state.get("vector_store_manager")
-            llm_manager = LLMManager(
-                st.session_state.selected_llm_model,
-                OLLAMA_BASE_URL,
-                temperature=st.session_state.llm_temperature
-            )
+            config['llm_model'] = st.session_state.selected_llm_model
+            config['temperature'] = st.session_state.llm_temperature
             
-            report_rag = ReportGenerationRAG(vector_store_manager, llm_manager)
+            st.info("보고서 생성을 시작합니다...")
+            status_text = st.empty()
+            report_placeholder = st.empty()
             
-            # Create streaming container for live updates if enabled
-            streaming_container = None
-            if config.get('enable_streaming', True):
-                streaming_container = st.container()
+            final_report_content = None
             
-            # Generate report with or without streaming
-            report_content = report_rag.generate_report(config, streaming_container=streaming_container)
-            
-            # Display completion message
-            st.success("✅ 보고서 생성 완료!")
-            
-            # Add some space before final preview
-            st.markdown("---")
-            
-            # Show final report preview
-            if config.get('enable_streaming', True):
-                # If streaming was enabled, show collapsed preview since user already saw the content
-                with st.expander("📖 완성된 보고서 전문", expanded=False):
-                    st.markdown(report_content)
+            with st.spinner("보고서 생성 중... 잠시만 기다려주세요."):
+                for event in run_report_generation_graph(config, vector_store_manager):
+                    node_name = list(event.keys())[0]
+                    state_update = event[node_name]
+
+                    if 'process_steps' in state_update:
+                        status_text.text('\\n'.join(state_update['process_steps']))
+                    
+                    if 'report_draft' in state_update and state_update['report_draft']:
+                        report_placeholder.markdown(state_update['report_draft'] + "▌")
+                    
+                    if 'final_report' in state_update and state_update['final_report']:
+                        final_report_content = state_update['final_report']
+
+            # Once the loop is finished, store the final result and clean up the progress flag.
+            if final_report_content:
+                st.session_state.generated_report = {"content": final_report_content, "config": config}
             else:
-                # If streaming was disabled, show expanded preview
-                st.subheader("📖 생성된 보고서")
-                st.markdown(report_content)
+                st.error("오류: 보고서 생성에 실패했거나 최종 결과가 비어있습니다.")
             
-            # Download options
-            ReportGenerationUI._display_download_options(report_content, config)
-            
-            # Save to session state
-            st.session_state.generated_report = {
-                "content": report_content,
-                "config": config,
-                "generated_at": datetime.now().isoformat()
-            }
-            
+            # Clean up the progress flag and rerun to display the final report.
+            del st.session_state.generation_in_progress
+            st.rerun()
+
         except Exception as e:
-            st.error(f"❌ 보고서 생성 중 오류가 발생했습니다: {str(e)}")
-    
+            del st.session_state.generation_in_progress
+            st.error(f"❌ 보고서 생성 중 심각한 오류 발생: {str(e)}")
+            import traceback
+            st.code(traceback.format_exc())
+
     @staticmethod
     def _display_download_options(report_content: str, config: Dict[str, Any]):
-        """Display download options for the generated report."""
         st.subheader("💾 다운로드")
-        
-        # Generate filename
-        topic = config.get('topic', '보고서').replace(' ', '_')
-        report_type = config.get('report_type', '').replace(' ', '_')
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        filename = f"{topic}_{report_type}_{timestamp}"
-        
-        col1, col2, col3 = st.columns(3)
-        
-        with col1:
-            # Markdown download
-            st.download_button(
-                label="📄 Markdown 다운로드",
-                data=report_content,
-                file_name=f"{filename}.md",
-                mime="text/markdown",
-                use_container_width=True
-            )
-        
-        with col2:
-            # HTML download
-            html_content = f"""<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="UTF-8">
-    <title>{config.get('topic', '보고서')}</title>
-    <style>
-        body {{ font-family: Arial, sans-serif; line-height: 1.6; margin: 40px; }}
-        h1, h2, h3 {{ color: #333; }}
-        h1 {{ border-bottom: 2px solid #333; }}
-        h2 {{ border-bottom: 1px solid #666; }}
-        blockquote {{ border-left: 4px solid #ddd; padding-left: 20px; margin: 20px 0; }}
-        code {{ background-color: #f4f4f4; padding: 2px 4px; border-radius: 3px; }}
-        pre {{ background-color: #f4f4f4; padding: 10px; border-radius: 5px; overflow-x: auto; }}
-    </style>
-</head>
-<body>
-{report_content}
-</body>
-</html>"""
-            
-            st.download_button(
-                label="🌐 HTML 다운로드",
-                data=html_content,
-                file_name=f"{filename}.html",
-                mime="text/html",
-                use_container_width=True
-            )
-        
-        with col3:
-            # Config download
-            config_json = json.dumps(config, ensure_ascii=False, indent=2)
-            st.download_button(
-                label="⚙️ 설정 다운로드",
-                data=config_json,
-                file_name=f"{filename}_config.json",
-                mime="application/json",
-                use_container_width=True
-            ) 
+        filename = f"{config.get('topic', 'report')}_{datetime.now().strftime('%Y%m%d')}"
+        col1, col2 = st.columns(2)
+        col1.download_button("📄 Markdown 다운로드", report_content, f"{filename}.md", "text/markdown", use_container_width=True)
+        col2.download_button("⚙️ 설정 다운로드", json.dumps(config, ensure_ascii=False, indent=2), f"{filename}_config.json", "application/json", use_container_width=True) 

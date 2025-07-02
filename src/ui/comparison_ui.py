@@ -7,10 +7,28 @@ import plotly.express as px
 from typing import List, Dict, Any
 import time
 
+from ..rag_systems.advanced_rag import get_advanced_rag_system_info
+from ..rag_systems.modular_rag import get_modular_rag_system_info
+from ..rag_systems.naive_rag import get_naive_rag_system_info
+
 
 class ComparisonUI:
     """UI components for comparing RAG systems."""
     
+    @staticmethod
+    def _get_total_retrieved_count(metadata: Dict[str, Any], result: Dict[str, Any]) -> int:
+        """
+        Calculates the total number of retrieved documents across all stages.
+        This function prioritizes keys representing pre-processed, total counts.
+        """
+        return (
+            metadata.get("total_retrieved") or      # Modular RAG (sum over iterations)
+            metadata.get("initial_retrieved") or    # Advanced RAG (before rerank)
+            metadata.get("num_retrieved") or        # Naive RAG
+            metadata.get("final_retrieved") or      # Fallback for Advanced RAG
+            len(result.get("retrieved_docs", []))   # Final fallback
+        )
+
     @staticmethod
     def display_comparison_tab():
         """Comparison and analysis tab."""
@@ -25,8 +43,13 @@ class ComparisonUI:
         # System information comparison
         if st.session_state.rag_systems:
             systems_info = []
-            for system_name, rag_system in st.session_state.rag_systems.items():
-                systems_info.append(rag_system.get_system_info())
+            for system_name, rag_system_or_info in st.session_state.rag_systems.items():
+                if system_name == "Naive RAG":
+                    systems_info.append(get_naive_rag_system_info())
+                elif system_name == "Advanced RAG":
+                    systems_info.append(get_advanced_rag_system_info())
+                elif system_name == "Modular RAG":
+                    systems_info.append(get_modular_rag_system_info())
             
             ComparisonUI.display_system_comparison(systems_info)
             st.divider()
@@ -135,13 +158,7 @@ class ComparisonUI:
         for result in results:
             metadata = result.get("metadata", {})
             
-            # Handle different metadata keys for retrieved document count
-            retrieved_count = (
-                metadata.get("final_retrieved") or  # Advanced RAG
-                metadata.get("num_retrieved") or    # Naive RAG
-                metadata.get("total_retrieved") or  # Modular RAG
-                len(result.get("retrieved_docs", []))  # Fallback to counting docs
-            )
+            retrieved_count = ComparisonUI._get_total_retrieved_count(metadata, result)
             
             # Determine search methods used
             search_methods = []
@@ -274,11 +291,7 @@ class ComparisonUI:
                         elif metadata.get("confidence", 0) > 0:
                             st.metric("신뢰도", f"{metadata.get('confidence', 0):.2f}")
                     with col3:
-                        doc_count = (
-                            metadata.get("final_retrieved") or 
-                            metadata.get("total_retrieved") or 
-                            len(result.get("retrieved_docs", []))
-                        )
+                        doc_count = ComparisonUI._get_total_retrieved_count(metadata, result)
                         st.metric("검색 문서", f"{doc_count}개")
                     
                     st.write("**질문:**")
@@ -449,12 +462,7 @@ class ComparisonUI:
             st.metric("⏱️ 처리 시간", f"{result['total_time']:.2f}초")
         
         with col2:
-            retrieved_count = (
-                metadata.get("final_retrieved") or  
-                metadata.get("num_retrieved") or    
-                metadata.get("total_retrieved") or  
-                len(result.get("retrieved_docs", []))
-            )
+            retrieved_count = ComparisonUI._get_total_retrieved_count(metadata, result)
             st.metric("📚 검색 문서", f"{retrieved_count}개")
         
         with col3:

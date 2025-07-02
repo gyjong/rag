@@ -4,9 +4,15 @@ import streamlit as st
 import io
 from typing import Dict, Any, Optional
 from datetime import datetime
+import tempfile
+import os
+from pathlib import Path
 
-from ..rag_systems.translation_rag import TranslationRAG
+# TranslationRAG는 더 이상 직접 사용하지 않음
+# from ..rag_systems.translation_rag import TranslationRAG 
+from ..graphs.translation_graph import run_translation_graph
 from ..utils.llm_manager import LLMManager
+from ..utils.document_processor import DocumentProcessor # 직접 사용
 from ..config import (
     SUPPORTED_SOURCE_LANGUAGES, 
     SUPPORTED_TARGET_LANGUAGES,
@@ -19,31 +25,26 @@ from ..config import (
 class TranslationUI:
     """UI class for document translation."""
     
+    # document_processor를 클래스 변수로 초기화
+    document_processor = DocumentProcessor()
+
     @staticmethod
     def display_translation_tab():
         """Display the translation tab interface."""
         st.markdown("## 🌐 문서 번역")
         st.markdown("---")
         
-        # Check LLM availability
         if not TranslationUI._check_llm_availability():
             return
         
-        # Initialize translation system
-        translation_rag = TranslationUI._get_translation_system()
-        if translation_rag is None:
-            return
-        
-        # Create two columns for layout
         col1, col2 = st.columns([1, 1])
         
         with col1:
-            TranslationUI._display_upload_section(translation_rag)
+            TranslationUI._display_upload_section()
         
         with col2:
             TranslationUI._display_settings_section()
         
-        # Translation results section
         if "translation_result" in st.session_state and st.session_state.translation_result:
             TranslationUI._display_results_section(st.session_state.translation_result)
     
@@ -56,8 +57,8 @@ class TranslationUI:
         """
         try:
             llm_manager = LLMManager(
-                st.session_state.get("selected_llm_model", "gemma3:12b-it-qat"),
-                "http://localhost:11434",
+                st.session_state.get("selected_llm_model", "gemma:7b"),
+                st.session_state.get("ollama_base_url", "http://localhost:11434"),
                 st.session_state.get("llm_temperature", 0.1)
             )
             
@@ -80,85 +81,40 @@ class TranslationUI:
             return False
     
     @staticmethod
-    def _get_translation_system() -> Optional[TranslationRAG]:
-        """Get or create translation system.
-        
-        Returns:
-            TranslationRAG instance or None if failed
-        """
-        try:
-            if "translation_rag" not in st.session_state:
-                llm_manager = LLMManager(
-                    st.session_state.get("selected_llm_model", "gemma3:12b-it-qat"),
-                    "http://localhost:11434",
-                    st.session_state.get("llm_temperature", 0.1)
-                )
-                st.session_state.translation_rag = TranslationRAG(llm_manager)
-            
-            return st.session_state.translation_rag
-            
-        except Exception as e:
-            st.error(f"번역 시스템 초기화 오류: {str(e)}")
-            return None
+    def _get_translation_system() -> Optional[Any]:
+        # 이 메서드는 더 이상 필요하지 않지만, 다른 곳에서 호출할 경우를 대비해 None을 반환하도록 남겨둘 수 있습니다.
+        # 혹은 관련 호출부를 모두 제거했다면 이 메서드 자체를 삭제해도 됩니다.
+        # 지금은 호출부가 없으므로 삭제하는 방향으로 진행하겠습니다.
+        pass
     
     @staticmethod
-    def _display_upload_section(translation_rag: TranslationRAG):
-        """Display file upload and input section.
-        
-        Args:
-            translation_rag: Translation RAG system instance
-        """
+    def _display_upload_section():
+        """Display file upload and input section."""
         st.subheader("📁 문서 입력")
         
-        # Document title input
-        document_title = st.text_input(
-            "문서 제목 (선택사항)",
-            value="",
-            placeholder="문서 제목을 입력하면 번역 품질이 향상됩니다",
-            help="문서 제목을 입력하면 번역 시 맥락을 더 잘 이해할 수 있습니다"
-        )
+        document_title = st.text_input("문서 제목 (선택사항)", value="", placeholder="문서 제목을 입력하면 번역 품질이 향상됩니다")
+        uploaded_file = st.file_uploader("번역할 문서를 업로드하세요", type=SUPPORTED_TRANSLATION_FILE_TYPES)
+        manual_text = st.text_area("또는 직접 텍스트 입력:", height=150, placeholder="여기에 영어 텍스트를 입력하세요...")
         
-        # File upload
-        uploaded_file = st.file_uploader(
-            "번역할 문서를 업로드하세요",
-            type=SUPPORTED_TRANSLATION_FILE_TYPES,
-            help=f"지원 형식: {', '.join(ext.upper() for ext in SUPPORTED_TRANSLATION_FILE_TYPES)}"
-        )
-        
-        # Text input alternative
-        st.markdown("**또는 직접 텍스트 입력:**")
-        manual_text = st.text_area(
-            "번역할 텍스트를 입력하세요",
-            height=150,
-            placeholder="여기에 영어 텍스트를 입력하세요..."
-        )
-        
-        # Process input
         text_to_translate = None
-        
         if uploaded_file is not None:
             with st.spinner("파일 처리 중..."):
-                text_to_translate = translation_rag.process_uploaded_file(uploaded_file)
+                text_to_translate = TranslationUI._process_uploaded_file(uploaded_file)
                 if text_to_translate:
                     st.success(f"✅ 파일 '{uploaded_file.name}' 처리 완료")
                     with st.expander("📄 추출된 텍스트 미리보기"):
-                        st.text_area("", text_to_translate[:1000] + "..." if len(text_to_translate) > 1000 else text_to_translate, height=100, disabled=True)
+                        st.text_area("", text_to_translate[:1000] + "...", height=100, disabled=True)
                 else:
                     st.error("❌ 파일 처리에 실패했습니다.")
-        
         elif manual_text.strip():
             text_to_translate = manual_text.strip()
-            st.info("✅ 수동 입력 텍스트 준비 완료")
         
-        # Store data in session state
         st.session_state.text_to_translate = text_to_translate
         st.session_state.document_title = document_title.strip() if document_title.strip() else None
         
-        # Translation button
         if text_to_translate:
-            st.markdown("---")
             if st.button("🚀 번역 시작", type="primary", use_container_width=True):
-                TranslationUI._perform_translation(translation_rag, text_to_translate)
+                TranslationUI._perform_translation(text_to_translate)
     
     @staticmethod
     def _display_settings_section():
@@ -275,28 +231,27 @@ class TranslationUI:
         st.info(info_text)
     
     @staticmethod
-    def _perform_translation(translation_rag: TranslationRAG, text: str):
-        """Perform document translation.
-        
-        Args:
-            translation_rag: Translation RAG system instance
-            text: Text to translate
-        """
+    def _perform_translation(text: str):
+        """Perform document translation using the graph."""
         source_lang = st.session_state.get("translation_source_lang", "English")
         target_lang = st.session_state.get("translation_target_lang", "Korean")
         use_paragraph_mode = st.session_state.get("use_paragraph_mode", True)
         document_title = st.session_state.get("document_title", None)
+        llm_model = st.session_state.get("selected_llm_model", "gemma:7b")
+        llm_temperature = st.session_state.get("llm_temperature", 0.1)
         
         mode_text = "단락 기반" if use_paragraph_mode else "문장 기반"
         
         with st.spinner(f"{source_lang}에서 {target_lang}으로 번역 중... ({mode_text})"):
             try:
-                result = translation_rag.translate_document(
+                result = run_translation_graph(
                     text=text,
                     source_lang=source_lang,
                     target_lang=target_lang,
                     use_paragraph_mode=use_paragraph_mode,
-                    document_title=document_title
+                    document_title=document_title,
+                    llm_model=llm_model,
+                    temperature=llm_temperature
                 )
                 
                 if result.get("success", False):
@@ -435,11 +390,32 @@ class TranslationUI:
         Returns:
             Statistics dictionary
         """
-        if "translation_rag" not in st.session_state:
-            return {}
+        if not result.get("success", False): return {}
         
-        translation_rag = st.session_state.translation_rag
-        return translation_rag.get_translation_stats(result)
+        mode = result.get('translation_mode', 'unknown')
+        pairs_key = 'paragraph_pairs' if mode == 'paragraph' else 'sentence_pairs'
+        pairs = result.get(pairs_key, [])
+        total = len(pairs)
+        skipped = sum(1 for p in pairs if p.get('skipped'))
+        
+        stats = {
+            "translation_mode": "단락 단위" if mode == "paragraph" else "문장 단위",
+            "total_units": total,
+            "translated_units": total - skipped,
+            "original_char_count": len(result.get('original_text', '')),
+            "translated_char_count": len(result.get('translated_text', '')),
+            "original_word_count": len(result.get('original_text', '').split()),
+            "translated_word_count": len(result.get('translated_text', '').split()),
+            "has_markdown": bool(result.get('markdown_content'))
+        }
+        if mode == 'paragraph':
+            stats["total_paragraphs"] = total
+            stats["translated_paragraphs"] = total - skipped
+        else:
+            stats["total_sentences"] = total
+            stats["translated_sentences"] = total - skipped
+            
+        return stats
     
     @staticmethod
     def _display_download_section(result: Dict[str, Any]):
@@ -450,73 +426,48 @@ class TranslationUI:
         """
         st.subheader("💾 다운로드 옵션")
         
-        # Get language information for filename
-        source_lang = result.get("source_language", "Unknown")
-        target_lang = result.get("target_language", "Unknown")
-        
-        # Create simple language codes for filenames
-        lang_codes = {
-            "English": "en",
-            "Korean": "ko", 
-            "Japanese": "ja",
-            "Chinese": "zh",
-            "French": "fr",
-            "German": "de",
-            "Spanish": "es",
-            "Italian": "it",
-            "Portuguese": "pt",
-            "Dutch": "nl",
-            "Russian": "ru"
-        }
-        
-        source_code = lang_codes.get(source_lang, source_lang.lower()[:2])
-        target_code = lang_codes.get(target_lang, target_lang.lower()[:2])
+        source_lang = result.get('source_language', 'Unknown')
+        target_lang = result.get('target_language', 'Unknown')
+        lang_codes = {"English": "en", "Korean": "ko", "Japanese": "ja", "Chinese": "zh"}
+        source_code = lang_codes.get(source_lang, 'unk')
+        target_code = lang_codes.get(target_lang, 'unk')
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
         
-        # Create download buttons based on available content
         cols = st.columns(3)
-        
         with cols[0]:
-            # Download translated text only
-            translated_text = result.get("translated_text", "")
-            st.download_button(
-                label="📄 번역문 다운로드",
-                data=translated_text,
-                file_name=f"translated_{source_code}_{target_code}_{timestamp}.txt",
-                mime="text/plain",
-                use_container_width=True,
-                help=f"{source_lang} → {target_lang} 번역 텍스트"
-            )
+            st.download_button(label="📄 번역문 다운로드 (.txt)", data=result.get("translated_text", ""),
+                               file_name=f"translated_{source_code}_{target_code}_{timestamp}.txt", mime="text/plain", use_container_width=True)
         
         with cols[1]:
-            # Download markdown if available
-            markdown_content = result.get("markdown_content", "")
-            if markdown_content:
-                st.download_button(
-                    label="📝 마크다운 다운로드",
-                    data=markdown_content,
-                    file_name=f"translated_markdown_{source_code}_{target_code}_{timestamp}.md",
-                    mime="text/markdown",
-                    use_container_width=True,
-                    help=f"마크다운 형식의 {target_lang} 번역 문서"
-                )
-            else:
-                st.empty()
+            if result.get("markdown_content"):
+                st.download_button(label="📝 마크다운 다운로드 (.md)", data=result.get("markdown_content", ""),
+                                   file_name=f"markdown_{source_code}_{target_code}_{timestamp}.md", mime="text/markdown", use_container_width=True)
         
         with cols[2]:
-            # Download full report
-            if "translation_rag" in st.session_state:
-                translation_rag = st.session_state.translation_rag
-                export_text = translation_rag.export_translation_result(result)
-                
-                st.download_button(
-                    label="📊 상세 리포트",
-                    data=export_text,
-                    file_name=f"translation_report_{source_code}_{target_code}_{timestamp}.md",
-                    mime="text/markdown",
-                    use_container_width=True,
-                    help=f"번역 과정과 결과가 포함된 상세 리포트"
-                )
+            report_text = TranslationUI._create_export_report(result)
+            st.download_button(label="📊 상세 리포트 (.md)", data=report_text,
+                               file_name=f"report_{source_code}_{target_code}_{timestamp}.md", mime="text/markdown", use_container_width=True)
+    
+    @staticmethod
+    def _create_export_report(result: Dict[str, Any]) -> str:
+        """Create a detailed report string for export."""
+        if not result.get("success", False): return "번역 결과를 내보낼 수 없습니다."
+        
+        lang_display = {"English": "영어", "Korean": "한국어"}
+        source_display = lang_display.get(result.get('source_language'), result.get('source_language'))
+        target_display = lang_display.get(result.get('target_language'), result.get('target_language'))
+        mode_display = "단락 기반" if result.get('translation_mode') == "paragraph" else "문장 기반"
+        
+        return f"""# 문서 번역 결과
+## 번역 정보
+- **원본 언어:** {source_display}
+- **대상 언어:** {target_display}
+- **번역 방식:** {mode_display}
+- **문서 제목:** {result.get('document_title', '제목 없음')}
+- **번역 시간:** {result.get('timestamp', 'Unknown')}
+---
+{result.get('markdown_content', result.get('translated_text', ''))}
+"""
     
     @staticmethod
     def _display_paragraph_comparison(result: Dict[str, Any]):
@@ -666,4 +617,22 @@ class TranslationUI:
         if st.button("🗑️ 번역 결과 지우기", type="secondary"):
             if "translation_result" in st.session_state:
                 del st.session_state.translation_result
-            st.rerun() 
+            st.rerun()
+
+    @staticmethod
+    def _process_uploaded_file(uploaded_file) -> Optional[str]:
+        """Process uploaded file and extract text."""
+        try:
+            with tempfile.NamedTemporaryFile(delete=False, suffix=Path(uploaded_file.name).suffix) as tmp_file:
+                tmp_file.write(uploaded_file.getvalue())
+                tmp_path = tmp_file.name
+            
+            documents = TranslationUI.document_processor.load_documents([tmp_path])
+            os.unlink(tmp_path)
+            
+            if documents:
+                return '\\n\\n'.join([doc.page_content for doc in documents])
+            return None
+        except Exception as e:
+            st.error(f"파일 처리 오류: {str(e)}")
+            return None 
