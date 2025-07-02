@@ -16,6 +16,7 @@ from src.graphs.document_discovery_graph import (
     create_detailed_search_graph
 )
 from src.config import MODELS_FOLDER, EMBEDDING_MODEL
+from src.utils.vector_store import VectorStoreManager
 
 class DocumentDiscoveryUI:
     """문서 발견 RAG를 위한 UI 클래스"""
@@ -128,70 +129,52 @@ class DocumentDiscoveryUI:
         time.sleep(1)
         st.rerun()
 
-    def _display_document_discovery_tab(self):
-        st.subheader("🔍 문서 발견")
-        st.markdown("질문을 입력하여 관련성이 높은 문서들을 찾아보세요.")
-        
-        summaries = dd_rag.load_document_summaries()
-        if not summaries:
-            st.warning("⚠️ 먼저 '문서 요약 관리' 탭에서 문서 요약을 생성해주세요.")
-            return
-        
-        st.success(f"✅ {len(summaries)}개 문서의 요약이 준비되었습니다.")
-        
-        query = st.text_area("🤔 질문:", placeholder="예: 2024년 AI 정책의 주요 변화점은?", height=100, key="discovery_query")
-        top_k = st.slider("최대 검색 문서 수", 1, 10, 5, key="discovery_top_k")
-
-        if st.button("🔍 관련 문서 찾기", type="primary"):
-            if query.strip():
-                self._run_document_discovery(query, top_k)
-            else:
-                st.warning("질문을 입력해주세요.")
-        
-        if "discovery_results" in st.session_state:
-            self._display_discovery_results(summaries)
-    
-    def _run_document_discovery(self, query: str, top_k: int):
-        graph = self.graphs["document_discovery"]
-        if not graph:
-            st.error("문서 발견 그래프를 초기화할 수 없습니다.")
+    @staticmethod
+    def display_document_discovery_tab():
+        """Handles the UI for the 2-step document discovery process."""
+        st.header("🔍 2단계 문서 발견")
+        if 'vector_store_manager' not in st.session_state or not st.session_state.vector_store_manager.get_vector_store():
+            st.warning("문서 발견을 위해 벡터 스토어를 먼저 로드하거나 생성해주세요.")
             return
 
-        with st.spinner("관련 문서를 찾는 중..."):
-            inputs = {"query": query, "top_k": top_k}
-            result = graph.invoke(inputs)
-            st.session_state.discovery_results = result.get("relevant_docs", [])
+        query = st.text_input("분석하고 싶은 주제나 질문을 입력하세요:", key="discovery_query")
 
-    def _display_discovery_results(self, summaries: Dict[str, Any]):
-        results = st.session_state.discovery_results
-        st.markdown(f"### 📋 관련 문서 목록 ({len(results)}개)")
-        st.markdown(f"*검색어: \"{st.session_state.discovery_query}\"*")
-
-        if not results:
-            st.warning("관련된 문서를 찾을 수 없습니다.")
-            return
+        if query:
+            vector_store_manager = st.session_state.vector_store_manager
             
-        for i, (filename, score, explanation) in enumerate(results, 1):
-            with st.container(border=True):
-                col1, col2, col3 = st.columns([5, 2, 2])
-                with col1:
-                    st.markdown(f"**{i}. {filename}** (점수: {score})")
-                    st.caption(explanation)
-                with col2:
-                    if st.button("👁️ 요약 보기", key=f"summary_{i}"):
-                        if filename in summaries:
-                            st.session_state.selected_summary_for_view = summaries[filename]
-                with col3:
-                    if st.button("👉 상세 검색으로", key=f"detail_{i}"):
-                        st.session_state.selected_document_for_detail = filename
-                        st.session_state.query_for_detail = st.session_state.discovery_query
-                        st.info("📖 '상세 검색' 탭으로 이동하여 검색을 계속하세요.")
+            with st.spinner("1단계: 관련성 높은 문서 발견 중..."):
+                relevant_docs_info = dd_rag.find_relevant_documents(vector_store_manager, query, top_k=5)
+            
+            if not relevant_docs_info:
+                st.warning("관련된 문서를 찾을 수 없습니다.")
+                return
 
-        if "selected_summary_for_view" in st.session_state:
-            self._show_summary_detail(st.session_state.selected_summary_for_view)
-            if st.button("❌ 닫기", key="close_summary_detail_view"):
-                del st.session_state.selected_summary_for_view
-                st.rerun()
+            st.success(f"✅ 1단계 완료: {len(relevant_docs_info)}개의 관련성 높은 문서를 발견했습니다.")
+            
+            with st.expander("📄 발견된 문서 목록 및 관련성 점수", expanded=True):
+                for doc_info in relevant_docs_info:
+                    st.write(f"**- 파일:** `{doc_info['filename']}` (점수: {doc_info['relevance_score']:.2f})")
+                    st.info(f"**관련성 이유:** {doc_info['reason']}")
+
+            st.subheader("🎯 2단계: 상세 정보 검색")
+            selected_filenames = [d['filename'] for d in relevant_docs_info]
+
+            with st.spinner(f"{len(selected_filenames)}개 문서에서 상세 정보 검색 중..."):
+                detailed_results = dd_rag.detailed_search_in_documents(vector_store_manager, selected_filenames, query, top_k=3)
+
+            if not detailed_results:
+                st.warning("상세 정보를 찾을 수 없습니다.")
+                return
+
+            st.success("✅ 2단계 완료: 상세 정보를 성공적으로 검색했습니다.")
+            
+            for result in detailed_results:
+                st.markdown(f"### 📌 `{result['filename']}` 기반 상세 답변")
+                st.info(result['answer'])
+                with st.expander("참고한 원본 내용"):
+                    for doc in result['source_documents']:
+                        st.markdown(f"**출처: `{doc.metadata.get('source', 'N/A')}` (페이지: {doc.metadata.get('page', 'N/A')})**")
+                        st.text_area("", value=doc.page_content, height=150, key=f"detail_{result['filename']}_{doc.metadata.get('page', 'N/A')}")
 
     def _display_detailed_search_tab(self):
         st.subheader("📖 상세 검색")

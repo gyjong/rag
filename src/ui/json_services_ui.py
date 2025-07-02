@@ -4,10 +4,12 @@ import streamlit as st
 import os
 from datetime import datetime, timedelta
 from typing import Optional, Dict, Any
+import json
 
 from ..rag_systems.json_rag import JSONDataProcessor
 from ..utils.llm_manager import LLMManager
 from ..graphs.json_rag_graph import create_json_rag_graph, JsonRagState
+from ..rag_systems import json_rag as json_rag_utils
 
 
 class JSONServicesUI:
@@ -200,30 +202,52 @@ class JSONServicesUI:
             else:
                 st.warning("검색할 내용을 입력해주세요.")
     
-    def render(self):
-        """메인 JSON 서비스 UI를 렌더링합니다."""
-        st.title("🏢 JSON 기반 정보 서비스")
-        st.write("구조화된 데이터를 활용한 실시간 정보 조회 서비스입니다.")
-        
-        # LLM Manager 초기화
-        llm_manager = LLMManager(
-            st.session_state.get("selected_llm_model", "llama3.2:latest"),
-            "http://localhost:11434",
-            temperature=st.session_state.get("llm_temperature", 0.1)
-        )
-        
-        # 그래프 및 프로세서 로드
-        processors = self.get_json_processors()
-        graph = self.get_json_rag_graph(llm_manager)
+    @staticmethod
+    def display_json_services_tab():
+        """Handles the UI for JSON-based services like bus schedules and menus."""
+        st.header("🏢 JSON 기반 정보 서비스")
 
-        service_tabs = st.tabs(["🚌 출퇴근 버스 안내", "🍽️ 구내식당 식단 안내"])
-        with service_tabs[0]:
-            self.render_bus_service(graph, processors)
-        with service_tabs[1]:
-            self.render_menu_service(graph, processors)
-        
-        with st.expander("ℹ️ 서비스 정보"):
-            st.write("""
-            **JSON 기반 정보 서비스**는 구조화된 JSON 데이터를 활용하여 버스 노선과 식단 정보를 실시간으로 제공합니다.
-            LangGraph 기반 워크플로우를 통해 사용자의 자연어 질문을 이해하고 정확한 정보를 검색하여 답변을 생성합니다.
-            """) 
+        service_options = ["🚌 버스 운행 정보", "오늘의 메뉴"]
+        selected_service = st.selectbox("조회할 서비스를 선택하세요:", service_options)
+
+        if selected_service == "🚌 버스 운행 정보":
+            JSONServicesUI._display_bus_schedule_ui()
+        elif selected_service == "오늘의 메뉴":
+            JSONServicesUI._display_menu_ui()
+            
+    @staticmethod
+    def _display_bus_schedule_ui():
+        st.subheader("🚌 버스 운행 정보 조회")
+        query = st.text_input("버스 번호 또는 정류장 이름을 입력하세요:", key="bus_query")
+
+        if query:
+            results = json_rag_utils.search_bus_schedule(query)
+            if results:
+                st.success(f"'{query}'에 대한 검색 결과:")
+                for route in results:
+                    with st.expander(f"**{route['route_name']}** ({route['direction']}) - {route['status']}"):
+                        st.write(f"**경로:** {route['path']}")
+                        st.write(f"**운행 시간:** {route['operating_hours']}")
+                        st.write(f"**배차 간격:** {route['headway']}")
+                        st.write(f"**주요 정류장:** {', '.join(route['major_stops'])}")
+            else:
+                st.warning("검색 결과가 없습니다.")
+    
+    @staticmethod
+    def _display_menu_ui():
+        st.subheader("🍽️ 오늘의 메뉴 조회")
+        query = st.text_input("메뉴 종류 또는 음식 이름을 입력하세요 (예: 한식, 점심):", key="menu_query", value="오늘의 점심 메뉴")
+
+        if query:
+            results = json_rag_utils.search_menu(query)
+            if results:
+                st.success(f"'{query}'에 대한 검색 결과:")
+                for menu in results:
+                    with st.expander(f"**{menu['category']}** - {menu['restaurant']}"):
+                        st.write(f"**메뉴:** {menu['name']}")
+                        st.write(f"**가격:** {menu['price']}원")
+                        st.write(f"**설명:** {menu['description']}")
+                        if menu.get('is_special_of_the_day'):
+                            st.info("✨ 오늘의 특별 메뉴입니다!")
+            else:
+                st.warning("검색 결과가 없습니다.") 

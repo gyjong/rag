@@ -60,7 +60,6 @@ def generate_report_section(
 2. 마크다운 형식으로 작성하세요.
 3. 대상 독자에 맞는 적절한 언어와 설명 수준을 사용하세요.
 4. 구체적인 데이터나 사실이 있으면 포함하세요.
-5. 참고한 문서가 있으면 내용 말미에 간단히 언급하세요.
 
 **출력 형식:**
 ## {section_title}
@@ -69,7 +68,8 @@ def generate_report_section(
 
 섹션 내용만 작성하고, 추가 설명은 하지 마세요."""
 
-    return llm_manager.generate_response(prompt=prompt, context="")
+    # Use streaming for real-time generation
+    return llm_manager.generate_response_stream(prompt=prompt, context="")
 
 def generate_report_header(report_config: Dict[str, Any]) -> str:
     """Generate report header with title and metadata."""
@@ -117,7 +117,7 @@ def generate_conclusion(llm_manager: LLMManager, context_docs: List[Document], r
 
 [결론 내용을 여기에 작성]
 """
-    return llm_manager.generate_response(prompt=prompt, context="")
+    return llm_manager.generate_response_stream(prompt=prompt, context="")
 
 def generate_references(docs: List[Document], citation_style: str) -> str:
     """Generate references section."""

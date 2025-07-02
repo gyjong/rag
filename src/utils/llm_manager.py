@@ -25,7 +25,14 @@ class LLMManager:
         self.base_url = base_url
         self.temperature = temperature
         self._llm = None
+        self.unwanted_tokens = ["<|eot_id|>", "</s>", "<s>", "</end_of_turn>"]
         
+    def _clean_response(self, text: str) -> str:
+        """Removes unwanted tokens from the LLM response."""
+        for token in self.unwanted_tokens:
+            text = text.replace(token, "")
+        return text.strip()
+    
     def check_ollama_connection(self) -> bool:
         """Check if Ollama server is running.
         
@@ -109,7 +116,7 @@ class LLMManager:
                 messages = [HumanMessage(content=prompt)]
                 
             response = llm.invoke(messages)
-            return response.content
+            return self._clean_response(response.content)
             
         except Exception as e:
             st.error(f"응답 생성 실패: {str(e)}")
@@ -142,7 +149,10 @@ class LLMManager:
                 
             for chunk in llm.stream(messages):
                 if chunk.content:
-                    yield chunk.content
+                    clean_chunk = chunk.content
+                    for token in self.unwanted_tokens:
+                        clean_chunk = clean_chunk.replace(token, "")
+                    yield clean_chunk
                     
         except Exception as e:
             yield f"오류가 발생했습니다: {str(e)}"

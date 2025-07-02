@@ -35,58 +35,61 @@ def initial_doc_retrieval_node(state: ReportGenerationState) -> Dict[str, Any]:
     return {"main_docs": main_docs, "process_steps": state['process_steps']}
 
 def generate_draft_node(state: ReportGenerationState) -> Generator[Dict[str, Any], None, None]:
-    """Generate the draft of the full report, streaming section by section."""
-    logger.info("--- Node: Report Draft Generation ---")
+    """Generate the draft of the full report, streaming section by section and token by token."""
+    logger.info("--- Node: Report Draft Generation (Streaming) ---")
     state['process_steps'].append("2. 보고서 초안 생성 중...")
     
     config = state['report_config']
     main_docs = state['main_docs']
     llm_manager = LLMManager(config.get('llm_model'), OLLAMA_BASE_URL, config.get('temperature'))
     
-    # Generate and yield header
-    report_content = report_utils.generate_report_header(config)
-    yield {"report_draft": report_content}
+    # 1. Generate and stream header
+    report_draft = report_utils.generate_report_header(config)
+    yield {"report_draft": report_draft}
 
-    # Generate and yield sections
-    all_sections_content = []
+    # 2. Generate and stream each section
     for i, section_info in enumerate(config['outline']):
         title, guide = section_info['title'], section_info['content_guide']
         
         current_step = f"  - {i+1}/{len(config['outline'])} 섹션 생성 중: {title}"
         if current_step not in state['process_steps']:
             state['process_steps'].append(current_step)
-
+        yield {"process_steps": state['process_steps']}
+        
         logger.info(current_step)
         
+        # Add section title to the draft
+        report_draft += f"\\n\\n## {title}\\n\\n"
+        yield {"report_draft": report_draft}
+
         section_docs = report_utils.retrieve_for_topic(state['vector_store_manager'], f"{config['topic']} {title}", k=5)
         context_docs = section_docs or main_docs[:5]
         
-        section_content = report_utils.generate_report_section(llm_manager, title, guide, context_docs, config)
-        all_sections_content.append(section_content)
+        # Stream the section content token by token
+        for token in report_utils.generate_report_section(llm_manager, title, guide, context_docs, config):
+            report_draft += token
+            yield {"report_draft": report_draft}
 
-        # Yield the updated draft
-        current_draft = report_content + "\\n\\n" + "\\n\\n---\\n\\n".join(all_sections_content)
-        yield {"report_draft": current_draft, "process_steps": state['process_steps']}
-    
-    # Combine for final draft before conclusion
-    report_content += "\\n\\n" + "\\n\\n---\\n\\n".join(all_sections_content)
-
-    # Generate and yield conclusion
+    # 3. Generate and stream conclusion
     state['process_steps'].append("  - 결론 생성 중...")
+    yield {"process_steps": state['process_steps']}
     logger.info("  - Generating conclusion...")
-    conclusion = report_utils.generate_conclusion(llm_manager, main_docs, config)
-    report_content += "\\n\\n---\\n\\n" + conclusion
-    yield {"report_draft": report_content, "process_steps": state['process_steps']}
+    report_draft += "\\n\\n## 결론\\n\\n"
+    yield {"report_draft": report_draft}
+    conclusion_stream = report_utils.generate_conclusion(llm_manager, main_docs, config) # Assuming this also streams
+    for token in conclusion_stream:
+        report_draft += token
+        yield {"report_draft": report_draft}
 
-    # Generate and yield references
+    # 4. Generate and stream references
     state['process_steps'].append("  - 참고자료 생성 중...")
+    yield {"process_steps": state['process_steps']}
     logger.info("  - Generating references...")
     references = report_utils.generate_references(main_docs, config.get('citation_style'))
     if references:
-        report_content += "\\n\\n---\\n\\n" + references
+        report_draft += "\\n\\n" + references
     
-    # The final return for the node state.
-    yield {"report_draft": report_content, "process_steps": state['process_steps']}
+    yield {"report_draft": report_draft, "process_steps": state['process_steps']}
 
 def validate_report_node(state: ReportGenerationState) -> Dict[str, Any]:
     """Validate the generated report draft against requirements."""
@@ -121,17 +124,45 @@ def validate_report_node(state: ReportGenerationState) -> Dict[str, Any]:
     return {"validation_feedback": feedback, "process_steps": state['process_steps']}
 
 def finalise_report_node(state: ReportGenerationState) -> Dict[str, Any]:
-    """Finalise the report. For now, it just passes the draft through."""
-    logger.info("--- Node: Finalising Report ---")
-    state['process_steps'].append("4. 보고서 최종화 중...")
+    """Finalises the report by revising the draft based on validation feedback."""
+    logger.info("--- Node: Revising and Finalising Report ---")
+    state['process_steps'].append("4. 검증 결과 기반으로 보고서 수정 중...")
     
+    config = state['report_config']
     draft = state['report_draft']
     feedback = state['validation_feedback']
     
-    final_report = draft
-    if config := state.get('report_config', {}).get('include_visuals'):
+    llm_manager = LLMManager(config.get('llm_model'), OLLAMA_BASE_URL, config.get('temperature'))
+
+    # Create a prompt for revision
+    revision_prompt = f"""
+당신은 전문 편집자입니다. 아래의 보고서 초안과 검토 피드백을 바탕으로, 보고서를 최종 완성본으로 수정해주세요.
+피드백을 반영하여 완성도를 높이고, 자연스러운 흐름을 갖는 전체 보고서를 다시 작성해야 합니다.
+
+**기존 보고서 초안:**
+---
+{draft}
+---
+
+**검토 피드백 및 개선 요청사항:**
+---
+{feedback}
+---
+
+**수정된 최종 보고서 (피드백을 모두 반영하여 완성된 Full-Text):**
+"""
+
+    # Generate the revised report
+    revised_report = llm_manager.generate_response(revision_prompt, "")
+    logger.info("Report has been revised based on feedback.")
+    
+    final_report = revised_report
+    
+    # Optionally add visual placeholders
+    if config.get('include_visuals'):
         final_report = report_utils.add_visual_placeholders(final_report)
     
+    # Append the validation summary for transparency
     final_report += f"""
 
 ---

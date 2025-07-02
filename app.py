@@ -5,6 +5,10 @@ import os
 from pathlib import Path
 import base64
 from typing import Optional
+import logging
+
+# pypdf's warnings are very verbose. We can silence them by raising the log level.
+logging.getLogger("pypdf._reader").setLevel(logging.ERROR)
 
 # Disable ChromaDB telemetry at app startup to prevent telemetry errors
 os.environ["ANONYMIZED_TELEMETRY"] = "False"
@@ -209,61 +213,33 @@ def setup_sidebar():
 
 
 def main():
-    """Main application function."""
-    # Apply custom font globally first (before any other UI elements)
-    inject_custom_font("fonts/Paperlogy.ttf")
-    
-    # Setup
+    """Main function to run the RAG application."""
     setup_page()
     initialize_session_state()
     setup_sidebar()
     
     # Main tabs
-    tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9, tab10 = st.tabs([
-        "📚 문서 로딩",
-        "🔍 벡터 스토어",
-        "🧪 RAG 실험",
-        "📊 결과 비교",
-        "📋 보고서 생성",
-        "🌐 문서 번역",
-        "🏢 정보 서비스",
-        "🔍 문서 발견",
-        "🌍 웹 검색 RAG",
-        "ℹ️ 소개"
+    tabs = st.tabs([
+        "📚 문서 로딩", "🔍 벡터 스토어", "🧪 RAG 실험", "📊 결과 비교", "📋 보고서 생성", 
+        "🌐 문서 번역", "🏢 정보 서비스", "🔍 문서 발견", "🌍 웹 검색 RAG", "ℹ️ 소개"
     ])
     
-    with tab1:
-        DocumentLoadingUI.display_document_loading_tab()
-    
-    with tab2:
-        VectorStoreUI.display_vector_store_tab()
-    
-    with tab3:
-        RAGExperimentUI.display_rag_experiment_tab()
-    
-    with tab4:
-        ComparisonUI.display_comparison_tab()
+    tab_map = {
+        tabs[0]: DocumentLoadingUI.display_document_loading_tab,
+        tabs[1]: VectorStoreUI.display_vector_store_tab,
+        tabs[2]: RAGExperimentUI.display_rag_experiment_tab,
+        tabs[3]: ComparisonUI.display_comparison_tab,
+        tabs[4]: ReportGenerationUI.display_report_generation_tab,
+        tabs[5]: TranslationUI.display_translation_tab,
+        tabs[6]: JSONServicesUI.display_json_services_tab,
+        tabs[7]: DocumentDiscoveryUI.display_document_discovery_tab,
+        tabs[8]: WebSearchUI.display_web_search_tab,
+        tabs[9]: AboutUI.display_about_tab,
+    }
 
-    with tab5:
-        ReportGenerationUI.display_report_generation_tab()
-        
-    with tab6:
-        TranslationUI.display_translation_tab()
-    
-    with tab7:
-        json_services_ui = JSONServicesUI()
-        json_services_ui.render()
-    
-    with tab8:
-        document_discovery_ui = DocumentDiscoveryUI()
-        document_discovery_ui.render()
-    
-    with tab9:
-        WebSearchUI.display_web_search_tab()
-    
-    with tab10:
-        # about_tab()
-        AboutUI.display_about_page()
+    for tab, display_func in tab_map.items():
+        with tab:
+            display_func()
 
 
 if __name__ == "__main__":

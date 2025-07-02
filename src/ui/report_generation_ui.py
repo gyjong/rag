@@ -16,9 +16,7 @@ class ReportGenerationUI:
             "default_outline": [
                 {"title": "서론", "content_guide": "연구 배경, 목적, 필요성을 설명"},
                 {"title": "이론적 배경", "content_guide": "관련 이론과 선행 연구를 검토"},
-                {"title": "연구 방법론", "content_guide": "연구 설계, 데이터 수집 및 분석 방법"},
                 {"title": "연구 결과", "content_guide": "연구를 통해 얻은 결과를 제시"},
-                {"title": "논의", "content_guide": "결과 해석 및 이론적/실무적 함의"},
                 {"title": "결론 및 제언", "content_guide": "연구 결과를 종합하고 향후 과제를 제시"}
             ]
         },
@@ -26,12 +24,9 @@ class ReportGenerationUI:
             "description": "특정 시장의 현황과 전망을 분석한 보고서",
             "default_outline": [
                 {"title": "시장 개요", "content_guide": "시장의 기본 현황과 규모를 소개"},
-                {"title": "시장 환경 분석", "content_guide": "PEST 분석 (정치, 경제, 사회, 기술)"},
                 {"title": "시장 동향", "content_guide": "최근 시장 변화와 트렌드를 분석"},
                 {"title": "경쟁 현황", "content_guide": "주요 경쟁업체와 경쟁 구조를 분석"},
-                {"title": "소비자 분석", "content_guide": "고객 세그먼트, 니즈, 행동 패턴"},
-                {"title": "시장 전망", "content_guide": "향후 시장 전망과 성장 가능성을 예측"},
-                {"title": "전략적 제언", "content_guide": "시장 진입/확장 전략 및 리스크 관리"}
+                {"title": "시장 전망", "content_guide": "향후 시장 전망과 성장 가능성을 예측"}
             ]
         },
         "기술동향보고서": {
@@ -207,7 +202,6 @@ class ReportGenerationUI:
             return
 
         if st.button("📋 보고서 생성하기", use_container_width=True, type="primary"):
-            # Set a flag to indicate generation is in progress and rerun.
             st.session_state.generation_in_progress = True
             st.rerun()
 
@@ -215,42 +209,59 @@ class ReportGenerationUI:
     def _generate_report(config: Dict[str, Any]):
         try:
             vector_store_manager = st.session_state.get("vector_store_manager")
-            config['llm_model'] = st.session_state.selected_llm_model
-            config['temperature'] = st.session_state.llm_temperature
+            if not vector_store_manager:
+                st.error("Vector store manager가 세션에 없습니다.")
+                st.session_state.generation_in_progress = False
+                return
+
+            config['llm_model'] = st.session_state.get('selected_llm_model', 'default_model')
+            config['temperature'] = st.session_state.get('llm_temperature', 0.7)
             
-            st.info("보고서 생성을 시작합니다...")
-            status_text = st.empty()
+            st.info("보고서 생성을 시작합니다... 이 과정은 몇 분 정도 소요될 수 있습니다.")
+            
+            progress_bar = st.progress(0, "생성 준비 중...")
+            status_placeholder = st.empty()
             report_placeholder = st.empty()
             
             final_report_content = None
+            total_steps = len(config.get('outline', [])) + 4  # 검색, 헤더, 결론, 참고자료
+
+            # LangGraph 스트림 실행
+            for i, event in enumerate(run_report_generation_graph(config, vector_store_manager)):
+                node_name = list(event.keys())[0]
+                state_update = event[node_name]
+
+                # 진행률 업데이트
+                progress_value = min((i + 1) / total_steps, 1.0)
+                
+                if 'process_steps' in state_update and state_update['process_steps']:
+                    current_step_text = state_update['process_steps'][-1]
+                    progress_bar.progress(progress_value, text=current_step_text)
+                    status_placeholder.info(f"**현재 진행 상황:**\n\n" + "\n".join(f"- {s}" for s in state_update['process_steps']))
+
+                # 실시간으로 보고서 초안 표시
+                if 'report_draft' in state_update and state_update['report_draft']:
+                    report_placeholder.markdown(state_update['report_draft'] + "▌")
+                
+                # 최종 보고서가 생성되면 저장
+                if 'final_report' in state_update and state_update['final_report']:
+                    final_report_content = state_update['final_report']
+                    report_placeholder.markdown(final_report_content) # 최종본 표시
             
-            with st.spinner("보고서 생성 중... 잠시만 기다려주세요."):
-                for event in run_report_generation_graph(config, vector_store_manager):
-                    node_name = list(event.keys())[0]
-                    state_update = event[node_name]
+            progress_bar.progress(1.0, "보고서 생성 완료!")
 
-                    if 'process_steps' in state_update:
-                        status_text.text('\\n'.join(state_update['process_steps']))
-                    
-                    if 'report_draft' in state_update and state_update['report_draft']:
-                        report_placeholder.markdown(state_update['report_draft'] + "▌")
-                    
-                    if 'final_report' in state_update and state_update['final_report']:
-                        final_report_content = state_update['final_report']
-
-            # Once the loop is finished, store the final result and clean up the progress flag.
             if final_report_content:
                 st.session_state.generated_report = {"content": final_report_content, "config": config}
             else:
                 st.error("오류: 보고서 생성에 실패했거나 최종 결과가 비어있습니다.")
             
-            # Clean up the progress flag and rerun to display the final report.
             del st.session_state.generation_in_progress
             st.rerun()
 
         except Exception as e:
-            del st.session_state.generation_in_progress
-            st.error(f"❌ 보고서 생성 중 심각한 오류 발생: {str(e)}")
+            if "generation_in_progress" in st.session_state:
+                del st.session_state.generation_in_progress
+            st.error(f"❌ 보고서 생성 중 오류 발생: {str(e)}")
             import traceback
             st.code(traceback.format_exc())
 

@@ -8,7 +8,7 @@ class AboutUI:
     """UI components for about and documentation sections."""
     
     @staticmethod
-    def display_about_page():
+    def display_about_tab():
         """Display the complete about page with all sections."""
         st.header("ℹ️ RAG 시스템 소개")
         
