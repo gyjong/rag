@@ -32,6 +32,7 @@ DEFAULT_LLM_MODEL = "gemma3:12b-it-qat"
 
 # 사용 가능한 LLM 모델 목록
 AVAILABLE_LLM_MODELS = {
+    "GPT-4o mini": "gpt-4o-mini",
     "Gemma 3 (1B)": "gemma3:1b",
     "Gemma 3 (1B-QAT)": "gemma3:1b-it-qat",
     "Gemma 3 (4B)": "gemma3:4b", 

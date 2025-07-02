@@ -4,10 +4,13 @@ from typing import Optional, Dict, Any, List, Iterator
 import streamlit as st
 import requests
 from langchain_ollama import ChatOllama
+from langchain_openai import ChatOpenAI
 from langchain_core.language_models import BaseChatModel
 from langchain_core.prompts import PromptTemplate, ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.messages import HumanMessage, SystemMessage
+
+from ..config.settings import OPENAI_API_KEY
 
 
 class LLMManager:
@@ -46,11 +49,10 @@ class LLMManager:
             return False
     
     def check_model_availability(self) -> bool:
-        """Check if the specified model is available.
-        
-        Returns:
-            True if model is available, False otherwise
-        """
+        """Check if the specified model is available."""
+        if self.model_name.startswith("gpt-"):
+            return bool(OPENAI_API_KEY)
+            
         try:
             response = requests.get(f"{self.base_url}/api/tags", timeout=5)
             if response.status_code == 200:
@@ -62,11 +64,26 @@ class LLMManager:
             return False
     
     def get_llm(self) -> Optional[BaseChatModel]:
-        """Get the LLM instance.
-        
-        Returns:
-            ChatLLM instance or None if not available
-        """
+        """Get the LLM instance for either Ollama or OpenAI."""
+        if self.model_name.startswith("gpt-"):
+            if not OPENAI_API_KEY:
+                st.error("OpenAI API 키가 설정되지 않았습니다. .env 파일에 추가해주세요.")
+                return None
+            if self._llm is None or not isinstance(self._llm, ChatOpenAI):
+                try:
+                    self._llm = ChatOpenAI(
+                        model=self.model_name,
+                        openai_api_key=OPENAI_API_KEY,
+                        temperature=self.temperature,
+                        streaming=True
+                    )
+                    st.success(f"LLM 모델 '{self.model_name}' 로딩 완료")
+                except Exception as e:
+                    st.error(f"OpenAI LLM 초기화 실패: {e}")
+                    return None
+            return self._llm
+
+        # Ollama-specific logic
         if not self.check_ollama_connection():
             st.error(f"Ollama 서버에 연결할 수 없습니다: {self.base_url}")
             return None
@@ -76,13 +93,13 @@ class LLMManager:
             st.code(f"ollama pull {self.model_name}")
             return None
             
-        if self._llm is None:
+        if self._llm is None or not isinstance(self._llm, ChatOllama):
             try:
                 self._llm = ChatOllama(
                     model=self.model_name,
                     base_url=self.base_url,
                     temperature=self.temperature,
-                    streaming=True  # Enable streaming by default
+                    streaming=True
                 )
                 st.success(f"LLM 모델 '{self.model_name}' 로딩 완료")
             except Exception as e:
