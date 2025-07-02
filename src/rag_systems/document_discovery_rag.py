@@ -16,14 +16,14 @@ from src.components.document_loader import DocumentLoader
 from src.utils.llm_manager import LLMManager
 from src.utils.embeddings import EmbeddingManager
 from src.utils.vector_store import VectorStoreManager
-from src.config import DOCS_FOLDER as DOCS_DIR
+from src.config import DOCS_FOLDER as DOCS_DIR, JSON_OUTPUT_FOLDER
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # --- Constants and Prompts ---
 
-SUMMARY_CACHE_DIR = Path("vector_stores/document_summaries")
+SUMMARY_CACHE_DIR = JSON_OUTPUT_FOLDER / "document_summaries"
 SUMMARY_CACHE_DIR.mkdir(exist_ok=True, parents=True)
 SUMMARY_CACHE_FILE = SUMMARY_CACHE_DIR / "document_summaries.json"
 

@@ -50,24 +50,29 @@ class DocumentDiscoveryUI:
             "detailed_search": create_detailed_search_graph(llm_manager, embedding_manager),
         }
 
-    def render(self):
+    @staticmethod
+    def display_document_discovery_tab():
         """Document Discovery 탭의 전체 UI를 렌더링합니다."""
+        # Create an instance to access helper methods
+        ui_instance = DocumentDiscoveryUI()
+
         st.header("🔍 문서 발견 및 상세 검색")
         st.markdown("""
-        이 기능은 2단계로 작동합니다:
-        1. **문서 발견**: 사용자 질문과 관련성이 높은 문서들을 찾습니다. (사전 요약 필요)
-        2. **상세 검색**: 선택된 문서에서 구체적인 답변을 검색합니다.
+        이 기능은 3단계로 작동합니다:
+        1. **문서 요약 관리**: 검색 대상 문서들의 요약을 생성/관리하여 검색 효율을 높입니다.
+        2. **문서 발견**: 사용자 질문과 관련성이 높은 문서들을 요약 기반으로 빠르게 찾습니다.
+        3. **상세 검색**: 발견된 문서들 내에서 구체적인 답변과 근거를 심층적으로 검색합니다.
         """)
 
         tab1, tab2, tab3 = st.tabs(["📊 문서 요약 관리", "🔍 문서 발견", "📖 상세 검색"])
         
         with tab1:
-            self._display_summary_management_tab()
+            ui_instance._display_summary_management_tab()
         with tab2:
-            self._display_document_discovery_tab()
+            ui_instance._display_discovery_step_tab()
         with tab3:
-            self._display_detailed_search_tab()
-    
+            ui_instance._display_detailed_search_tab()
+
     def _display_summary_management_tab(self):
         st.subheader("📊 문서 요약 관리")
         st.markdown("모든 문서의 요약을 생성하고 관리하여 효율적인 검색을 준비합니다.")
@@ -129,52 +134,66 @@ class DocumentDiscoveryUI:
         time.sleep(1)
         st.rerun()
 
-    @staticmethod
-    def display_document_discovery_tab():
-        """Handles the UI for the 2-step document discovery process."""
-        st.header("🔍 2단계 문서 발견")
-        if 'vector_store_manager' not in st.session_state or not st.session_state.vector_store_manager.get_vector_store():
-            st.warning("문서 발견을 위해 벡터 스토어를 먼저 로드하거나 생성해주세요.")
+    def _display_discovery_step_tab(self):
+        """Handles the UI for the document discovery step."""
+        st.subheader("🔍 2단계: 문서 발견")
+        
+        summaries = dd_rag.load_document_summaries()
+        if not summaries:
+            st.warning("먼저 '문서 요약 관리' 탭에서 최소 1개 이상의 문서 요약을 생성해주세요.")
             return
 
         query = st.text_input("분석하고 싶은 주제나 질문을 입력하세요:", key="discovery_query")
 
-        if query:
-            vector_store_manager = st.session_state.vector_store_manager
-            
-            with st.spinner("1단계: 관련성 높은 문서 발견 중..."):
-                relevant_docs_info = dd_rag.find_relevant_documents(vector_store_manager, query, top_k=5)
-            
-            if not relevant_docs_info:
-                st.warning("관련된 문서를 찾을 수 없습니다.")
+        if st.button("🔍 문서 발견 실행", key="discovery_run_button", type="primary"):
+            if not query.strip():
+                st.warning("분석할 주제나 질문을 입력해주세요.")
                 return
 
-            st.success(f"✅ 1단계 완료: {len(relevant_docs_info)}개의 관련성 높은 문서를 발견했습니다.")
-            
-            with st.expander("📄 발견된 문서 목록 및 관련성 점수", expanded=True):
-                for doc_info in relevant_docs_info:
-                    st.write(f"**- 파일:** `{doc_info['filename']}` (점수: {doc_info['relevance_score']:.2f})")
-                    st.info(f"**관련성 이유:** {doc_info['reason']}")
-
-            st.subheader("🎯 2단계: 상세 정보 검색")
-            selected_filenames = [d['filename'] for d in relevant_docs_info]
-
-            with st.spinner(f"{len(selected_filenames)}개 문서에서 상세 정보 검색 중..."):
-                detailed_results = dd_rag.detailed_search_in_documents(vector_store_manager, selected_filenames, query, top_k=3)
-
-            if not detailed_results:
-                st.warning("상세 정보를 찾을 수 없습니다.")
+            graph = self.graphs["document_discovery"]
+            if not graph:
+                st.error("문서 발견 그래프를 초기화할 수 없습니다.")
                 return
 
-            st.success("✅ 2단계 완료: 상세 정보를 성공적으로 검색했습니다.")
+            with st.spinner("관련성 높은 문서 발견 중..."):
+                inputs = {"query": query, "top_k": 5} # top_k is fixed for discovery
+                result = graph.invoke(inputs)
             
-            for result in detailed_results:
-                st.markdown(f"### 📌 `{result['filename']}` 기반 상세 답변")
-                st.info(result['answer'])
-                with st.expander("참고한 원본 내용"):
-                    for doc in result['source_documents']:
-                        st.markdown(f"**출처: `{doc.metadata.get('source', 'N/A')}` (페이지: {doc.metadata.get('page', 'N/A')})**")
-                        st.text_area("", value=doc.page_content, height=150, key=f"detail_{result['filename']}_{doc.metadata.get('page', 'N/A')}")
+            # Clear previous detailed search results when a new discovery is made
+            if 'detailed_search_results' in st.session_state:
+                del st.session_state.detailed_search_results
+            st.session_state.discovered_docs = result.get("relevant_docs", [])
+            st.session_state.discovery_query = query
+        
+        if 'discovered_docs' in st.session_state and st.session_state.discovered_docs:
+            st.markdown("---")
+            st.subheader("🎯 3단계: 상세 정보 검색")
+            st.markdown("관련성이 높은 문서 목록입니다. 각 문서에 대해 상세 검색을 실행할 수 있습니다.")
+
+            chunk_k = st.slider("상세 검색 시 참고할 청크 수", 3, 15, 5, key="discovery_detail_chunk_k")
+            
+            if 'detailed_search_results' not in st.session_state:
+                st.session_state.detailed_search_results = {}
+
+            for doc_info in st.session_state.discovered_docs:
+                filename, score, reasoning = doc_info
+                
+                with st.container():
+                    col1, col2 = st.columns([4, 1])
+                    with col1:
+                        st.markdown(f"**- 파일:** `{filename}` (관련성 점수: **{score}점**)")
+                        st.info(f"**관련성 이유:** {reasoning}")
+                    
+                    with col2:
+                        if st.button("🔍 상세 검색", key=f"discovery_detail_search_{filename}"):
+                            self._run_detailed_search(filename, st.session_state.discovery_query, chunk_k)
+                            st.rerun()
+
+                    if filename in st.session_state.detailed_search_results:
+                        with st.expander(f"상세 검색 결과: {filename}", expanded=True):
+                            result_data = st.session_state.detailed_search_results[filename]
+                            self._display_single_detailed_result(result_data, filename)
+                    st.markdown("---")
 
     def _display_detailed_search_tab(self):
         st.subheader("📖 상세 검색")
@@ -216,17 +235,31 @@ class DocumentDiscoveryUI:
                 "vector_store_config": {"vector_store_type": st.session_state.get("vector_store_type", "faiss")}
             }
             result = graph.invoke(inputs)
+            
+            if 'detailed_search_results' not in st.session_state:
+                st.session_state.detailed_search_results = {}
+            st.session_state.detailed_search_results[filename] = result
+            # These are for the dedicated detail tab, can be kept for now
             st.session_state.detailed_search_result = result
             st.session_state.detailed_search_filename = filename
 
     def _display_detailed_search_result(self):
         result = st.session_state.detailed_search_result
+        filename = st.session_state.detailed_search_filename
+        if result:
+            self._display_single_detailed_result(result, filename)
+
+    def _display_single_detailed_result(self, result: Dict[str, Any], filename: str):
+        """Displays a single detailed search result."""
+        if not result:
+            return
+            
         if result.get("error"):
             st.error(f"❌ {result['error']}")
             return
 
-        st.markdown(f"### 💡 답변 (출처: {st.session_state.detailed_search_filename})")
-        st.markdown(result["answer"])
+        st.markdown(f"**💡 답변:**")
+        st.markdown(result.get("answer", "답변을 생성하지 못했습니다."))
         
         with st.expander("📝 참고한 문서 내용 보기"):
             for chunk in result.get("relevant_chunks", []):
@@ -234,7 +267,8 @@ class DocumentDiscoveryUI:
                     f"페이지 {chunk['metadata'].get('page', 'N/A')}",
                     chunk["content"],
                     height=150,
-                    disabled=True
+                    disabled=True,
+                    key=f"chunk_{filename}_{chunk['metadata'].get('page', 'N/A')}_{hash(chunk['content'])}"
                 )
 
     def _show_summary_detail(self, summary_data: Dict[str, Any]):
