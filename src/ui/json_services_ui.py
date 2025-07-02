@@ -207,47 +207,21 @@ class JSONServicesUI:
         """Handles the UI for JSON-based services like bus schedules and menus."""
         st.header("🏢 JSON 기반 정보 서비스")
 
-        service_options = ["🚌 버스 운행 정보", "오늘의 메뉴"]
-        selected_service = st.selectbox("조회할 서비스를 선택하세요:", service_options)
+        # Create an instance of the class to access its methods and resources
+        ui_instance = JSONServicesUI()
+        llm_manager = LLMManager()  # Assuming default initialization is fine
+        graph = ui_instance.get_json_rag_graph(llm_manager)
+        processors = ui_instance.get_json_processors()
+
+        service_options = ["🚌 버스 운행 정보", "🍽️ 구내식당 식단 안내"]
+        selected_service = st.radio(
+            "조회할 서비스를 선택하세요:",
+            service_options,
+            horizontal=True,
+            key="json_service_selection"
+        )
 
         if selected_service == "🚌 버스 운행 정보":
-            JSONServicesUI._display_bus_schedule_ui()
-        elif selected_service == "오늘의 메뉴":
-            JSONServicesUI._display_menu_ui()
-            
-    @staticmethod
-    def _display_bus_schedule_ui():
-        st.subheader("🚌 버스 운행 정보 조회")
-        query = st.text_input("버스 번호 또는 정류장 이름을 입력하세요:", key="bus_query")
-
-        if query:
-            results = json_rag_utils.search_bus_schedule(query)
-            if results:
-                st.success(f"'{query}'에 대한 검색 결과:")
-                for route in results:
-                    with st.expander(f"**{route['route_name']}** ({route['direction']}) - {route['status']}"):
-                        st.write(f"**경로:** {route['path']}")
-                        st.write(f"**운행 시간:** {route['operating_hours']}")
-                        st.write(f"**배차 간격:** {route['headway']}")
-                        st.write(f"**주요 정류장:** {', '.join(route['major_stops'])}")
-            else:
-                st.warning("검색 결과가 없습니다.")
-    
-    @staticmethod
-    def _display_menu_ui():
-        st.subheader("🍽️ 오늘의 메뉴 조회")
-        query = st.text_input("메뉴 종류 또는 음식 이름을 입력하세요 (예: 한식, 점심):", key="menu_query", value="오늘의 점심 메뉴")
-
-        if query:
-            results = json_rag_utils.search_menu(query)
-            if results:
-                st.success(f"'{query}'에 대한 검색 결과:")
-                for menu in results:
-                    with st.expander(f"**{menu['category']}** - {menu['restaurant']}"):
-                        st.write(f"**메뉴:** {menu['name']}")
-                        st.write(f"**가격:** {menu['price']}원")
-                        st.write(f"**설명:** {menu['description']}")
-                        if menu.get('is_special_of_the_day'):
-                            st.info("✨ 오늘의 특별 메뉴입니다!")
-            else:
-                st.warning("검색 결과가 없습니다.") 
+            ui_instance.render_bus_service(graph, processors)
+        elif selected_service == "🍽️ 구내식당 식단 안내":
+            ui_instance.render_menu_service(graph, processors) 
