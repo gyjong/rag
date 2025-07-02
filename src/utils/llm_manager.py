@@ -5,12 +5,13 @@ import streamlit as st
 import requests
 from langchain_ollama import ChatOllama
 from langchain_openai import ChatOpenAI
+from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.language_models import BaseChatModel
 from langchain_core.prompts import PromptTemplate, ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.messages import HumanMessage, SystemMessage
 
-from ..config.settings import OPENAI_API_KEY
+from ..config.settings import OPENAI_API_KEY, GOOGLE_API_KEY
 
 
 class LLMManager:
@@ -52,6 +53,8 @@ class LLMManager:
         """Check if the specified model is available."""
         if self.model_name.startswith("gpt-"):
             return bool(OPENAI_API_KEY)
+        if self.model_name.startswith("gemini-"):
+            return bool(GOOGLE_API_KEY)
             
         try:
             response = requests.get(f"{self.base_url}/api/tags", timeout=5)
@@ -64,7 +67,7 @@ class LLMManager:
             return False
     
     def get_llm(self) -> Optional[BaseChatModel]:
-        """Get the LLM instance for either Ollama or OpenAI."""
+        """Get the LLM instance for either Ollama, OpenAI or Google."""
         if self.model_name.startswith("gpt-"):
             if not OPENAI_API_KEY:
                 st.error("OpenAI API 키가 설정되지 않았습니다. .env 파일에 추가해주세요.")
@@ -80,6 +83,24 @@ class LLMManager:
                     st.success(f"LLM 모델 '{self.model_name}' 로딩 완료")
                 except Exception as e:
                     st.error(f"OpenAI LLM 초기화 실패: {e}")
+                    return None
+            return self._llm
+
+        if self.model_name.startswith("gemini-"):
+            if not GOOGLE_API_KEY:
+                st.error("Google API 키가 설정되지 않았습니다. .env 파일에 추가해주세요.")
+                return None
+            if self._llm is None or not isinstance(self._llm, ChatGoogleGenerativeAI):
+                try:
+                    self._llm = ChatGoogleGenerativeAI(
+                        model=self.model_name,
+                        google_api_key=GOOGLE_API_KEY,
+                        temperature=self.temperature,
+                        convert_system_message_to_human=True # For compatibility
+                    )
+                    st.success(f"LLM 모델 '{self.model_name}' 로딩 완료")
+                except Exception as e:
+                    st.error(f"Google Gemini LLM 초기화 실패: {e}")
                     return None
             return self._llm
 

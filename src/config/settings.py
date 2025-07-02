@@ -26,12 +26,14 @@ VECTOR_STORES_FOLDER = PROJECT_ROOT / "vector_stores"
 
 # ====== LLM 설정 ======
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
 OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
 OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "gemma3:12b-it-qat")
 DEFAULT_LLM_MODEL = "gemma3:12b-it-qat"
 
 # 사용 가능한 LLM 모델 목록
 AVAILABLE_LLM_MODELS = {
+    "Gemini 2.5 Pro": "gemini-2.5-pro",
     "GPT-4o mini": "gpt-4o-mini",
     "Gemma 3 (1B)": "gemma3:1b",
     "Gemma 3 (1B-QAT)": "gemma3:1b-it-qat",
