@@ -40,7 +40,7 @@ def inject_custom_font(font_path: str):
                 font-weight: normal;
                 font-style: normal;
             }}
-            * {{
+            *:not([data-testid="stIconMaterial"]) {{
                 font-family: 'Paperlogy', sans-serif !important;
             }}
             /* Keep code blocks monospaced for readability */
@@ -53,4 +53,4 @@ def inject_custom_font(font_path: str):
         )
     except Exception as e:
         # Silently ignore font injection errors when Streamlit runtime is not available
-        pass 
+        pass
