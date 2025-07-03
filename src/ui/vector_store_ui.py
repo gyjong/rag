@@ -70,21 +70,45 @@ class VectorStoreUI:
         """Display vector store creation options."""
         st.write("### ⚙️ 벡터 스토어 설정")
 
-        col1, col2 = st.columns(2)
-        with col1:
-            # Vector store type (from sidebar setting)
-            vector_store_type = st.session_state.get("vector_store_type", "chroma")
-            st.write(f"**벡터 스토어 타입:** {vector_store_type.upper()}")
-            st.write(f"**컬렉션 이름:** {COLLECTION_NAME}")
+        # Vector store type (from sidebar setting)
+        vector_store_type = st.session_state.get("vector_store_type", "chroma")
 
-        with col2:
-            # Save options
-            save_vector_store = st.checkbox("💾 벡터 스토어 저장", value=True)
-            if save_vector_store:
-                store_name = st.text_input(
-                    "벡터 스토어 이름:",
-                    value=f"vectorstore_{vector_store_type}_{datetime.now().strftime('%Y%m%d_%H%M')}"
-                )
+        collection_name_generated = f"vectorstore_{vector_store_type}_{datetime.now().strftime('%Y%m%d_%H%M')}"
+
+        if vector_store_type == "milvus":
+            col1, col2 = st.columns(2)
+            with col1:
+                st.write(f"**벡터 스토어 타입:** {vector_store_type.upper()}")
+
+            with col2:
+                save_vector_store = st.checkbox("💾 벡터 스토어 저장", value=True)
+
+            col1, col2 = st.columns(2)
+            with col2:
+                if save_vector_store:
+                    store_name = st.text_input(
+                        "컬렉션 이름:",
+                        value=collection_name_generated
+                    )
+                else:
+                    st.write(f"**컬렉션 이름:** {collection_name_generated}")
+                    store_name = collection_name_generated
+        else:
+            col1, col2 = st.columns(2)
+            with col1:
+                st.write(f"**벡터 스토어 타입:** {vector_store_type.upper()}")
+                st.write(f"**컬렉션 이름:** {COLLECTION_NAME}")
+
+            with col2:
+                # Save options
+                save_vector_store = st.checkbox("💾 벡터 스토어 저장", value=True)
+                if save_vector_store:
+                    store_name = st.text_input(
+                        "벡터 스토어 이름:",
+                        value=collection_name_generated
+                    )
+                else:
+                    store_name = COLLECTION_NAME
 
         # Create vector store button
         if st.button("🚀 벡터 스토어 생성 시작", type="primary"):
@@ -112,7 +136,7 @@ class VectorStoreUI:
             vector_store_manager = VectorStoreManager(
                 embeddings,
                 vector_store_type=vector_store_type,
-                collection_name=COLLECTION_NAME
+                collection_name=store_name if save_vector_store else COLLECTION_NAME
             )
 
             # Create vector store
@@ -152,6 +176,9 @@ class VectorStoreUI:
 
             # Save vector store if requested
             if save_vector_store and store_name:
+                if vector_store_type == "milvus":
+                    st.info("ℹ️ Milvus는 서버 기반 스토리지입니다. 컬렉션 정보만 저장됩니다.")
+
                 store_path = VECTOR_STORES_FOLDER / store_name
 
                 # Prepare metadata
@@ -167,7 +194,13 @@ class VectorStoreUI:
 
                 success = vector_store_manager.save_vector_store(store_path, metadata)
                 if success:
-                    st.success(f"✅ 벡터 스토어 생성 완료: {store_name}")
+                    if vector_store_type == "milvus":
+                        st.success(f"✅ 벡터 스토어가 저장되었습니다: {store_name}")
+                    else:
+                        st.success(f"✅ 벡터 스토어가 저장되었습니다: {store_path}")
+                else:
+                    st.error(f"❌ 벡터 스토어 저장 실패: {str(e)}")
+            st.success(f"✅ 벡터 스토어 생성 완료: {store_name}")
 
         except Exception as e:
             st.error(f"❌ 벡터 스토어 생성 실패: {str(e)}")
@@ -257,7 +290,8 @@ class VectorStoreUI:
                 st.write("**📅 생성 정보:**")
                 st.write(f"• 생성 시간: {selected_store.get('created_at', 'N/A')[:19]}")
                 st.write(f"• 컬렉션 이름: {selected_store.get('collection_name', 'N/A')}")
-                st.write(f"• 저장 경로: {store_path}")
+                if selected_store.get('vector_store_type', 'unknown').upper() != "MILVUS":
+                    st.write(f"• 저장 경로: {store_path}")
 
                 st.write("**🤖 모델 정보:**")
                 st.write(f"• 임베딩 모델: {selected_store.get('embedding_model', 'N/A')}")
@@ -278,7 +312,8 @@ class VectorStoreUI:
                     st.write(f"• 청크 오버랩: {selected_store.get('chunk_overlap', 0)}")
 
         # Storage path info
-        st.info(f"📂 **저장 위치:** `{store_path}`")
+        if selected_store.get('vector_store_type', 'unknown').upper() != "MILVUS":
+            st.info(f"📂 **저장 위치:** `{store_path}`")
 
     @staticmethod
     def _load_vector_store(selected_store, store_path):

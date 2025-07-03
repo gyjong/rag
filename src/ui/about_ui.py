@@ -305,8 +305,10 @@ class AboutUI:
             ollama pull gemma3:4b-it-qat
             ollama pull gemma3:12b-it-qat
 
+            # 의존성 설치
+            poetry install --no-root
+
             # 애플리케이션 실행
-            poetry install
             poetry run streamlit run app.py
             ```
 

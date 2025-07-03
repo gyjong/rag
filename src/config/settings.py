@@ -37,7 +37,7 @@ AVAILABLE_LLM_MODELS = {
     "GPT-4o mini": "gpt-4o-mini",
     "Gemma 3 (1B)": "gemma3:1b",
     "Gemma 3 (1B-QAT)": "gemma3:1b-it-qat",
-    "Gemma 3 (4B)": "gemma3:4b", 
+    "Gemma 3 (4B)": "gemma3:4b",
     "Gemma 3 (4B-QAT)": "gemma3:4b-it-qat",
     "Gemma 3 (12B)": "gemma3:12b",
     "Gemma 3 (12B-QAT)": "gemma3:12b-it-qat",
@@ -91,7 +91,7 @@ RAG_CONFIGS = {
         ]
     },
     "advanced": {
-        "name": "Advanced RAG", 
+        "name": "Advanced RAG",
         "description": "최적화된 검색-생성 파이프라인",
         "color": "#FFA500",  # Orange
         "features": [
@@ -103,7 +103,7 @@ RAG_CONFIGS = {
     },
     "modular": {
         "name": "Modular RAG",
-        "description": "모듈화된 유연한 RAG 시스템", 
+        "description": "모듈화된 유연한 RAG 시스템",
         "color": "#FF6B6B",  # Red
         "features": [
             "모듈화된 아키텍처",
@@ -118,7 +118,7 @@ RAG_CONFIGS = {
 EVALUATION_METRICS = [
     "응답 품질",
     "관련성",
-    "정확성", 
+    "정확성",
     "완전성",
     "응답 시간"
 ]
@@ -133,9 +133,9 @@ CONTEXT7_CONFIG = {
 SUPPORTED_SOURCE_LANGUAGES = [
     "English",
     "Korean",
-    "Japanese", 
+    "Japanese",
     "Chinese",
-    "French", 
+    "French",
     "German",
     "Spanish",
     "Italian",
@@ -147,9 +147,9 @@ SUPPORTED_SOURCE_LANGUAGES = [
 SUPPORTED_TARGET_LANGUAGES = [
     "Korean",
     "English",
-    "Japanese", 
+    "Japanese",
     "Chinese",
-    "French", 
+    "French",
     "German",
     "Spanish",
     "Italian",
@@ -161,12 +161,14 @@ SUPPORTED_TARGET_LANGUAGES = [
 DEFAULT_SOURCE_LANGUAGE = "English"
 DEFAULT_TARGET_LANGUAGE = "Korean"
 
-SUPPORTED_TRANSLATION_FILE_TYPES = ["txt", "pdf", "docx", "md"] 
+SUPPORTED_TRANSLATION_FILE_TYPES = ["txt", "pdf", "docx", "md"]
 
 
+# ========== LangFuse 설정 ==========
 from langfuse import Langfuse
 from langfuse.langchain import CallbackHandler
 
+# API KEY 입력
 langfuse = Langfuse(
     public_key="pk-lf-8436e2a2-1b1f-4f23-acfc-d13ba578f470",
     secret_key="sk-lf-2f5292cd-0b57-4324-8158-7dc1167a7abb",

@@ -36,7 +36,7 @@ from src.ui.web_search_ui import WebSearchUI
 
 def get_or_create_vector_store_manager() -> Optional[VectorStoreManager]:
     """Get or create vector store manager with lazy loading.
-    
+
     Returns:
         VectorStoreManager instance or None if creation fails
     """
@@ -45,7 +45,7 @@ def get_or_create_vector_store_manager() -> Optional[VectorStoreManager]:
             # Initialize embeddings lazily
             embedding_manager = EmbeddingManager(EMBEDDING_MODEL, MODELS_FOLDER)
             embeddings = embedding_manager.get_embeddings()
-            
+
             # Initialize vector store manager
             st.session_state.vector_store_manager = VectorStoreManager(
                 embeddings=embeddings,
@@ -53,7 +53,7 @@ def get_or_create_vector_store_manager() -> Optional[VectorStoreManager]:
                 collection_name="rag_documents"
             )
             st.session_state.embedding_manager = embedding_manager
-            
+
             # Initialize empty metadata if not exists
             if "vector_store_metadata" not in st.session_state:
                 st.session_state.vector_store_metadata = {}
@@ -62,11 +62,11 @@ def get_or_create_vector_store_manager() -> Optional[VectorStoreManager]:
             if "vector_store_id" not in st.session_state:
                 import time
                 st.session_state.vector_store_id = f"auto_{int(time.time())}"
-            
+
         except Exception as e:
             st.error(f"❌ 벡터 스토어 매니저 초기화 실패: {str(e)}")
             return None
-    
+
     return st.session_state.get("vector_store_manager")
 
 
@@ -95,10 +95,10 @@ def setup_page():
         layout="wide",
         initial_sidebar_state="expanded"
     )
-    
+
     # Apply custom font globally first
     inject_custom_font("fonts/Paperlogy.ttf")
-    
+
     # Display title with custom styling
     st.markdown('<h1 class="main-title">🤖 RAG Systems Comparison Tool</h1>', unsafe_allow_html=True)
     st.markdown('<p class="subtitle">단계별 Naive RAG, Advanced RAG, Modular RAG 비교 실험 애플리케이션</p>', unsafe_allow_html=True)
@@ -107,7 +107,7 @@ def setup_page():
 def setup_sidebar():
     """Setup sidebar with system information."""
     st.sidebar.title("⚙️ 시스템 설정")
-    
+
     # Model Selection
     st.sidebar.subheader("🤖 모델 선택")
     selected_model_name = st.sidebar.selectbox(
@@ -116,7 +116,7 @@ def setup_sidebar():
         index=list(AVAILABLE_LLM_MODELS.values()).index(DEFAULT_LLM_MODEL) if DEFAULT_LLM_MODEL in AVAILABLE_LLM_MODELS.values() else 0
     )
     selected_model = AVAILABLE_LLM_MODELS[selected_model_name]
-    
+
     # LLM Temperature
     st.sidebar.subheader("🔥 LLM Temperature")
     temperature = st.sidebar.slider(
@@ -124,7 +124,7 @@ def setup_sidebar():
     )
     st.session_state.llm_temperature = temperature
     st.sidebar.write(f"현재 값: {temperature}")
-    
+
     # Vector Store Type
     st.sidebar.subheader("🗄️ 벡터 스토어 타입")
     vector_store_type = st.sidebar.radio(
@@ -134,7 +134,7 @@ def setup_sidebar():
     )
     st.session_state.vector_store_type = vector_store_type
     st.sidebar.write(f"현재 선택: {vector_store_type}")
-    
+
     # Chunk Size
     st.sidebar.subheader("🔪 청크 크기 (Chunk Size)")
     chunk_size = st.sidebar.slider(
@@ -142,7 +142,7 @@ def setup_sidebar():
     )
     st.session_state.chunk_size = chunk_size
     st.sidebar.write(f"현재 값: {chunk_size}")
-    
+
     # Chunk Overlap
     st.sidebar.subheader("🔗 청크 오버랩 (Chunk Overlap)")
     chunk_overlap = st.sidebar.slider(
@@ -150,7 +150,7 @@ def setup_sidebar():
     )
     st.session_state.chunk_overlap = chunk_overlap
     st.sidebar.write(f"현재 값: {chunk_overlap}")
-    
+
     # Top-K (검색 수)
     st.sidebar.subheader("🔍 검색 수 (Top-K)")
     top_k = st.sidebar.slider(
@@ -158,7 +158,7 @@ def setup_sidebar():
     )
     st.session_state.top_k = top_k
     st.sidebar.write(f"현재 값: {top_k}")
-    
+
     # Store selected model in session state
     if "selected_llm_model" not in st.session_state:
         st.session_state.selected_llm_model = selected_model
@@ -167,12 +167,12 @@ def setup_sidebar():
         # Clear cached LLM when model changes
         if "llm_manager" in st.session_state:
             del st.session_state.llm_manager
-    
+
     # LLM Status
     st.sidebar.subheader("🧠 LLM 상태")
     llm_manager = LLMManager(st.session_state.selected_llm_model, OLLAMA_BASE_URL, temperature=st.session_state.llm_temperature)
     llm_info = llm_manager.get_model_info()
-    
+
     if llm_info["connection_status"]:
         st.sidebar.success("✅ Ollama 서버 연결됨")
         if llm_info["model_available"]:
@@ -189,7 +189,7 @@ def setup_sidebar():
     else:
         st.sidebar.error("❌ Ollama 서버 연결 실패")
         st.sidebar.code(f"ollama serve")
-    
+
     # Document Status
     st.sidebar.subheader("📚 문서 상태")
     if st.session_state.documents_loaded:
@@ -197,13 +197,13 @@ def setup_sidebar():
         st.sidebar.success(f"✅ {len(st.session_state.document_chunks)}개 청크 생성됨")
     else:
         st.sidebar.warning("⚠️ 문서가 로딩되지 않음")
-    
+
     # Vector Store Status
     if st.session_state.vector_store_created:
         st.sidebar.success("✅ 벡터 스토어 생성됨")
     else:
         st.sidebar.warning("⚠️ 벡터 스토어 미생성")
-    
+
     # Configuration
     st.sidebar.subheader("🔧 설정")
     st.sidebar.write(f"**임베딩 모델:** {EMBEDDING_MODEL}")
@@ -217,13 +217,13 @@ def main():
     setup_page()
     initialize_session_state()
     setup_sidebar()
-    
+
     # Main tabs
     tabs = st.tabs([
-        "📚 문서 로딩", "🔍 벡터 스토어", "🧪 RAG 실험", "📊 결과 비교", "📋 보고서 생성", 
+        "📚 문서 로딩", "🔍 벡터 스토어", "🧪 RAG 실험", "📊 결과 비교", "📋 보고서 생성",
         "🌐 문서 번역", "🏢 정보 서비스", "🔍 문서 발견", "🌍 웹 검색 RAG", "ℹ️ 소개"
     ])
-    
+
     tab_map = {
         tabs[0]: DocumentLoadingUI.display_document_loading_tab,
         tabs[1]: VectorStoreUI.display_vector_store_tab,
