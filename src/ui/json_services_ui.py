@@ -10,7 +10,7 @@ from ..rag_systems.json_rag import JSONDataProcessor
 from ..utils.llm_manager import LLMManager
 from ..graphs.json_rag_graph import create_json_rag_graph, JsonRagState
 from ..rag_systems import json_rag as json_rag_utils
-
+from src.config import langfuse_handler
 
 class JSONServicesUI:
     """JSON 기반 서비스 UI 클래스."""
@@ -67,7 +67,7 @@ class JSONServicesUI:
         }
 
         with st.spinner(f"{'버스' if service_type == 'bus' else '식단'} 정보를 검색하고 답변을 생성 중입니다..."):
-            final_state = graph.invoke(inputs)
+            final_state = graph.invoke(inputs, config={"callbacks": [langfuse_handler]})
 
             answer = final_state.get("answer", "결과를 생성하지 못했습니다.")
             answer_placeholder.markdown(answer)

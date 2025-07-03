@@ -17,6 +17,7 @@ from src.graphs.document_discovery_graph import (
 )
 from src.config import MODELS_FOLDER, EMBEDDING_MODEL
 from src.utils.vector_store import VectorStoreManager
+from src.config import langfuse_handler
 
 class DocumentDiscoveryUI:
     """문서 발견 RAG를 위한 UI 클래스"""
@@ -128,7 +129,7 @@ class DocumentDiscoveryUI:
             return
             
         with st.spinner("문서 요약 생성 중..."):
-            final_state = graph.invoke({})
+            final_state = graph.invoke({}, config={"callbacks": [langfuse_handler]})
         
         st.success(f"✅ 요약 생성 완료! {final_state.get('processed_docs', 0)}개 신규 문서 처리됨")
         time.sleep(1)
@@ -157,13 +158,12 @@ class DocumentDiscoveryUI:
 
             with st.spinner("관련성 높은 문서 발견 중..."):
                 inputs = {"query": query, "top_k": 5} # top_k is fixed for discovery
-                result = graph.invoke(inputs)
+                result = graph.invoke(inputs, config={"callbacks": [langfuse_handler]})
             
-            # Clear previous detailed search results when a new discovery is made
             if 'detailed_search_results' in st.session_state:
                 del st.session_state.detailed_search_results
             st.session_state.discovered_docs = result.get("relevant_docs", [])
-            st.session_state.discovery_query = query
+            st.session_state.last_discovery_query = query
         
         if 'discovered_docs' in st.session_state and st.session_state.discovered_docs:
             st.markdown("---")
@@ -186,13 +186,13 @@ class DocumentDiscoveryUI:
                     
                     with col2:
                         if st.button("🔍 상세 검색", key=f"discovery_detail_search_{filename}"):
-                            self._run_detailed_search(filename, st.session_state.discovery_query, chunk_k)
+                            self._run_detailed_search(filename, st.session_state.last_discovery_query, chunk_k)
                             st.rerun()
 
                     if filename in st.session_state.detailed_search_results:
                         with st.expander(f"상세 검색 결과: {filename}", expanded=True):
                             result_data = st.session_state.detailed_search_results[filename]
-                            self._display_single_detailed_result(result_data, filename)
+                            self._display_single_detailed_result(result_data, filename, key_prefix="discovery_")
                     st.markdown("---")
 
     def _display_detailed_search_tab(self):
@@ -234,7 +234,7 @@ class DocumentDiscoveryUI:
                 "top_k": top_k,
                 "vector_store_config": {"vector_store_type": st.session_state.get("vector_store_type", "faiss")}
             }
-            result = graph.invoke(inputs)
+            result = graph.invoke(inputs, config={"callbacks": [langfuse_handler]})
             
             if 'detailed_search_results' not in st.session_state:
                 st.session_state.detailed_search_results = {}
@@ -247,9 +247,9 @@ class DocumentDiscoveryUI:
         result = st.session_state.detailed_search_result
         filename = st.session_state.detailed_search_filename
         if result:
-            self._display_single_detailed_result(result, filename)
+            self._display_single_detailed_result(result, filename, key_prefix="detail_")
 
-    def _display_single_detailed_result(self, result: Dict[str, Any], filename: str):
+    def _display_single_detailed_result(self, result: Dict[str, Any], filename: str, key_prefix: str = ""):
         """Displays a single detailed search result."""
         if not result:
             return
@@ -268,7 +268,7 @@ class DocumentDiscoveryUI:
                     chunk["content"],
                     height=150,
                     disabled=True,
-                    key=f"chunk_{filename}_{chunk['metadata'].get('page', 'N/A')}_{hash(chunk['content'])}"
+                    key=f"{key_prefix}chunk_{filename}_{chunk['metadata'].get('page', 'N/A')}_{hash(chunk['content'])}"
                 )
 
     def _show_summary_detail(self, summary_data: Dict[str, Any]):

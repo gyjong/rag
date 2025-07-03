@@ -511,7 +511,7 @@ class RAGExperimentUI:
         
         final_state = {}
         with st.spinner("Modular RAG 그래프 실행 중..."):
-            for state in modular_rag_graph.stream(inputs):
+            for state in modular_rag_graph.stream(inputs, config={"callbacks": [langfuse_handler]}):
                 node_name, node_output = list(state.items())[0]
                 final_state.update(node_output)
 
@@ -585,7 +585,7 @@ class RAGExperimentUI:
         
         final_state = {}
         with st.spinner("Advanced RAG 그래프 실행 중..."):
-            final_state = advanced_rag_graph.invoke(inputs)
+            final_state = advanced_rag_graph.invoke(inputs, config={"callbacks": [langfuse_handler]})
 
         # 1. 쿼리 전처리 결과 표시
         st.subheader("🔧 1단계: 쿼리 전처리")
@@ -653,7 +653,7 @@ class RAGExperimentUI:
         naive_rag_graph = create_naive_rag_graph(llm_manager, vector_store_manager)
         
         inputs = {"query": query, "k": k}
-        final_state = naive_rag_graph.invoke(inputs)
+        final_state = naive_rag_graph.invoke(inputs, config={"callbacks": [langfuse_handler]})
 
         end_time = time.time()
         total_time = end_time - start_time

@@ -78,7 +78,7 @@ def generate_answer_node(state: JsonRagState, llm_manager: LLMManager) -> Dict[s
         return {"answer": state["error"]}
 
     query = state["query"]
-    context = state["context"]
+    context = state.get("context", "")
     service_type = state["service_type"]
     data_type = "버스 정보" if service_type == "bus" else "메뉴 정보"
 

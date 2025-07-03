@@ -5,7 +5,7 @@ from langgraph.graph import StateGraph, END, START
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from ..rag_systems import web_search_rag as web_search_utils
 from ..utils.llm_manager import LLMManager
-from ..config import OLLAMA_BASE_URL
+from ..config import OLLAMA_BASE_URL, langfuse_handler
 import logging
 
 # 로깅 설정
@@ -87,7 +87,7 @@ def run_web_search_graph(query: str, num_results: int, llm_model: str, temperatu
         "process_steps": []
     }
     
-    final_state = graph.invoke(initial_state)
+    final_state = graph.invoke(initial_state, config={"callbacks": [langfuse_handler]})
     
     # 최종 상태에서 필요한 정보만 추출하여 반환
     return {

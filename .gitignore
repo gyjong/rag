@@ -148,3 +148,6 @@ json_data/
 
 # vector store
 vector_stores/
+
+# langfuse
+langfuse/

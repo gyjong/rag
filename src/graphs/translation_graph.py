@@ -8,7 +8,7 @@ from langchain_core.runnables import Runnable
 # TranslationRAG 클래스 대신 유틸리티 함수들을 직접 임포트
 from ..rag_systems import translation_rag as translation_utils
 from ..utils.llm_manager import LLMManager
-from ..config import OLLAMA_BASE_URL
+from ..config import OLLAMA_BASE_URL, langfuse_handler
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -181,7 +181,7 @@ def run_translation_graph(**kwargs) -> Dict[str, Any]:
         "timestamp": ""
     }
 
-    final_state = graph.invoke(initial_state)
+    final_state = graph.invoke(initial_state, config={"callbacks": [langfuse_handler]})
 
     final_result = {**final_state}
     final_result.update({
