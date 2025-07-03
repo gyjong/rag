@@ -103,7 +103,7 @@ class TranslationUI:
                 if text_to_translate:
                     st.success(f"✅ 파일 '{uploaded_file.name}' 처리 완료")
                     with st.expander("📄 추출된 텍스트 미리보기"):
-                        st.text_area("", text_to_translate[:1000] + "...", height=100, disabled=True)
+                        st.text_area("추출된 텍스트 미리보기", text_to_translate[:1000] + "...", height=100, disabled=True, label_visibility="hidden")
                 else:
                     st.error("❌ 파일 처리에 실패했습니다.")
         elif manual_text.strip():
