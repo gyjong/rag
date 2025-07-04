@@ -1,0 +1,6 @@
+question,ground_truth
+Modular RAG가 제공하는 주요 특징 두 가지를 쓰시오.,구성 요소 기반 아키텍처(Componentized Architecture): 검색 랭킹 생성 등 핵심 기능을 독립 모듈로 분리해 개별 관리·교체·최적화가 가능 동적 워크플로우(Dynamic Workflow): 질의의 복잡도와 의도에 따라 조건부 실행 반복 개선 병렬 처리 등을 지원해 유연한 처리 흐름을 제공
+RAG(Retrieval-Augmented Generation)의 세 가지 주요 발전 단계는 무엇인가?,Naive RAG - Advanced RAG -Modular RAG
+Naive RAG의 한계점 중 “얕은 질의 이해” “검색 노이즈” “고정된 선형 워크플로우”가 의미하는 바를 각각 간단히 설명하시오.,얕은 질의 이해 (Shallow Query Understanding): 키워드 또는 벡터 기반 유사도 매칭에 의존해 질의의 의도를 깊이 파악하지 못함 검색 노이즈 (Retrieval Noise): 유사도만으로 문서를 선택하다 보니 불필요한 정보까지 과도하게 포함됨 고정된 선형 워크플로우 (Linear Workflow): 검색 후 곧바로 생성으로 넘어가며 잘못된 검색 결과를 수정할 기회 없이 응답 생성 단계로 전이됨 
+Modular RAG의 3단계 구조를 구성하는 요소는 무엇인가?,1단계: 모듈(Module) 2단계: 서브모듈(Submodule) 3단계: 연산자(Operator)
+GraphRAG(Graph Retrieval-Augmented Generation)의 핵심 구성 요소 다섯 가지를 나열하시오.,쿼리 프로세서(Query Processor) 검색기(Retriever) 구성기(Organizer) 생성기(Generator) 그래프 데이터 소스(Graph Data Source)

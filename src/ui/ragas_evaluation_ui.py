@@ -157,7 +157,7 @@ class RagasEvaluationUI:
         """Allows model selection and initiates the evaluation."""
         st.subheader("2. 평가 대상 RAG 모델 선택")
         
-        col1, col2 = st.columns([3, 1])
+        col1, col2 = st.columns([1, 2])
         
         with col1:
             models_to_evaluate = st.multiselect(

@@ -145,7 +145,6 @@ models/
 # json data
 json_data/
 
-
 # vector store
 vector_stores/
 
@@ -155,4 +154,3 @@ langfuse/
 # Milvus DB
 milvus_local.db
 .milvus_local.db.lock
-
