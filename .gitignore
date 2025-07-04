@@ -151,3 +151,8 @@ vector_stores/
 
 # langfuse
 langfuse/
+
+# Milvus DB
+milvus_local.db
+.milvus_local.db.lock
+
