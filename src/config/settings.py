@@ -168,11 +168,10 @@ SUPPORTED_TRANSLATION_FILE_TYPES = ["txt", "pdf", "docx", "md"]
 from langfuse import Langfuse
 from langfuse.langchain import CallbackHandler
 
-# API KEY 입력
 langfuse = Langfuse(
-    public_key="pk-lf-8436e2a2-1b1f-4f23-acfc-d13ba578f470",
-    secret_key="sk-lf-2f5292cd-0b57-4324-8158-7dc1167a7abb",
-    host="http://localhost:3000"
+    public_key=os.getenv("LANGFUSE_PUBLIC_KEY"),
+    secret_key=os.getenv("LANGFUSE_SECRET_KEY"),
+    host=os.getenv("LANGFUSE_HOST")
 )
 
 langfuse_handler = CallbackHandler()
