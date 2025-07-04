@@ -35,6 +35,9 @@ class VectorStoreUI:
 
         with tab3:
             VectorStoreUI._display_vector_store_management()
+        
+        # Display search test once at the main level if vector store is loaded
+        VectorStoreUI._display_search_test()
 
     @staticmethod
     def _display_vector_store_creation():
@@ -352,9 +355,6 @@ class VectorStoreUI:
 
             st.success(f"✅ 벡터 스토어 '{selected_store['store_name']}' 로딩 완료!")
 
-            # 로딩 성공 후 바로 검색 테스트 UI 표시
-            VectorStoreUI._display_search_test()
-
         except Exception as e:
             st.error(f"❌ 벡터 스토어 로딩 실패: {str(e)}")
             import traceback
@@ -367,13 +367,19 @@ class VectorStoreUI:
             st.markdown("---")
             st.subheader("🔍 벡터 스토어 검색 테스트")
 
-            col1, col2 = st.columns([3, 1])
-            with col1:
-                test_query = st.text_input("테스트 검색어를 입력하세요:", placeholder="예: AI 트렌드", key="vs_search_query")
-            with col2:
-                test_k = st.slider("검색 문서 수:", 1, 10, st.session_state.get("top_k", DEFAULT_K), key="vs_search_k")
+            # Use form to handle both Enter key and button click
+            with st.form(key="vector_search_form"):
+                col1, col2 = st.columns([3, 1])
+                with col1:
+                    test_query = st.text_input("테스트 검색어를 입력하세요:", placeholder="예: AI 트렌드", key="vs_search_query")
+                with col2:
+                    test_k = st.slider("검색 문서 수:", 1, 10, st.session_state.get("top_k", DEFAULT_K), key="vs_search_k")
 
-            if test_query and st.button("🔍 검색 테스트", key="vs_search_button"):
+                # Form submit button (works for both Enter key and button click)
+                search_submitted = st.form_submit_button("🔍 검색 테스트", type="primary", use_container_width=True)
+
+            # Execute search when form is submitted
+            if search_submitted and test_query:
                 vector_store_manager = st.session_state.vector_store_manager
                 try:
                     docs_with_score = vector_store_manager.similarity_search_with_score(test_query, k=test_k)
@@ -391,6 +397,8 @@ class VectorStoreUI:
 
                 except Exception as e:
                     st.error(f"❌ 검색 테스트 실패: {str(e)}")
+            elif search_submitted and not test_query:
+                st.warning("⚠️ 검색어를 입력해주세요.")
 
             # Current vector store status
             with st.expander("📊 현재 벡터 스토어 상태"):

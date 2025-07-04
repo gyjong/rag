@@ -179,21 +179,18 @@ class RagasEvaluationUI:
         """Allows model selection and initiates the evaluation."""
         st.subheader("2. 평가 대상 RAG 모델 선택")
         
-        col1, col2 = st.columns([1, 2])
+        # 설정에서 가져온 모델들을 UI용 이름으로 변환
+        available_model_names = [MODEL_NAME_MAPPING[model] for model in RAGAS_AVAILABLE_MODELS]
+        models_to_evaluate = st.multiselect(
+            "평가할 모델을 선택하세요.",
+            options=available_model_names,
+            default=available_model_names
+        )
         
-        with col1:
-            # 설정에서 가져온 모델들을 UI용 이름으로 변환
-            available_model_names = [MODEL_NAME_MAPPING[model] for model in RAGAS_AVAILABLE_MODELS]
-            models_to_evaluate = st.multiselect(
-                "평가할 모델을 선택하세요.",
-                options=available_model_names,
-                default=available_model_names
-            )
-        
-        with col2:
-            st.write(" ") # For alignment
-            if st.button("🚀 평가 시작", type="primary", disabled=not models_to_evaluate or st.session_state.evaluation_running):
-                self._run_evaluation(models_to_evaluate)
+        st.write(" ") # For alignment
+        st.subheader("3. RAGAS 평가 시작")
+        if st.button("🚀 평가 시작", type="primary", disabled=not models_to_evaluate or st.session_state.evaluation_running):
+            self._run_evaluation(models_to_evaluate)
 
     def _run_evaluation(self, models_to_evaluate):
         """Executes the evaluation process."""
@@ -341,7 +338,7 @@ class RagasEvaluationUI:
     def _display_results(self):
         """Displays the evaluation results with advanced Plotly visualizations."""
         if st.session_state.evaluation_results:
-            st.subheader("3. 평가 결과")
+            st.subheader("4. 평가 결과")
             
             # 개별 모델 결과 표시
             for model_name, result_df in st.session_state.evaluation_results.items():
@@ -362,7 +359,7 @@ class RagasEvaluationUI:
 
     def _create_comprehensive_visualizations(self):
         """다중 모델 비교를 위한 종합 시각화를 생성합니다."""
-        st.subheader("📊 모델별 종합 비교")
+        st.subheader("5. 모델별 종합 비교")
         
         # 데이터 준비
         summary_data = self._prepare_summary_data()
