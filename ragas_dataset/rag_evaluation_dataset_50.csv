@@ -1,0 +1,51 @@
+question,ground_truth
+RAG의 약자는 무엇인가?,Retrieval-Augmented Generation
+RAG의 세 가지 핵심 요소는?,"색인(Indexing), 검색(Retrieval), 생성(Generation)"
+Naive RAG의 핵심 구성 요소는 무엇인가?,"색인, 검색, 생성"
+Naive RAG의 작동 방식은?,"문서를 청크로 분할 후 임베딩으로 벡터 변환하여 저장하고, 쿼리를 임베딩하여 유사한 청크를 검색 후 LLM에 입력하여 응답 생성"
+Naive RAG의 한계 중 하나인 'Shallow Query Understanding'을 한국어로 무엇이라 하는가?,얕은 질의 이해
+Advanced RAG에서 도입된 사전 검색 처리 기법 두 가지는?,"쿼리 재작성(Query Rewriting), 쿼리 확장(Query Expansion)"
+Advanced RAG의 사후 검색 처리 기법 예시 두 가지는?,"재정렬(Re-ranking), 압축(Compression)"
+Modular RAG의 핵심 개념은?,독립적인 모듈과 특수 연산자로 구성된 유연하고 확장 가능한 프레임워크
+Modular RAG의 3단계 구조를 쓰시오.,"모듈(Module), 하위 모듈(Submodule), 연산자(Operator)"
+"Module, Submodule, Operator 각각의 역할을 간략히 설명하시오.",Module: RAG 핵심 단계를 처리; Submodule: 모듈 내 세부 기능; Operator: 특정 기능 구현 단위
+Modular RAG의 '오케스트레이션 모듈'의 기능은?,"라우팅, 스케줄링, 융합 등을 통해 워크플로우 제어"
+Modular RAG의 동적 워크플로우 예시 패턴 세 가지는?,"조건부 패턴, 분기 패턴, 루프 패턴"
+Modular RAG에서 'Hybrid Search'는 어떤 검색 기법을 결합하는가?,BM25와 벡터 검색
+Modular RAG의 'Pre-retrieval' 모듈의 Operator 예시를 두 가지 쓰시오.,"Query Expansion, Query Transformation"
+Retrieval 모듈의 Operator 중 하나를 쓰시오.,Retriever Selection
+Post-Retrieval 모듈의 Operator 중 두 가지는?,"Rerank, Compression"
+Generation 모듈에서 사용되는 Operator 예시 두 가지는?,"Generator Fine-tuning, Verification"
+Modular RAG의 장점으로 'Componentized Architecture'가 의미하는 바는?,핵심 기능을 개별 모듈로 분리해 독립적으로 관리 가능
+Modular RAG의 다중 데이터 소스 통합이 가능한 이유는?,모듈 기반으로 다양한 데이터 소스를 유연하게 조합할 수 있기 때문
+LangGraph를 활용한 오케스트레이션이 제공하는 기능은?,"조건부 라우팅, 병렬 처리, 순환 흐름 등 동적 워크플로우 구성"
+GraphRAG의 핵심 구성 요소 다섯 가지를 쓰시오.,"쿼리 프로세서, 검색기(Retriever), 구성기(Organizer), 생성기(Generator), 그래프 데이터 소스"
+GraphRAG가 기존 RAG 대비 강화하는 주요 이점은?,관계형 지식 활용을 통한 다단계 추론 및 장기 계획 지원
+LinkedIn이 GraphRAG를 도입한 목적은?,고객 서비스 이슈 티켓 간 관계 보존으로 검색 정확도 향상
+LinkedIn GraphRAG 시스템이 이슈 해결 시간을 얼마나 단축했는가?,28.6%
+Naive RAG를 적용하기 적합한 분야는?,"간단한 FAQ, 문서 검색"
+Advanced RAG를 주로 활용하는 도메인은?,"법률, 금융, 의료"
+Modular RAG가 특히 강력한 성능을 발휘하는 분야는?,복잡한 도메인 지식이 필요한 분야
+RAG의 발전 순서를 나열하시오.,Naive RAG → Advanced RAG → Modular RAG
+RAG의 주요 문제점 중 하나인 'Hallucination'은 무엇을 의미하는가?,LLM이 사실 근거 없이 잘못된 정보를 생성하는 현상
+Modular RAG의 '루프 패턴'은 어떤 처리 방식을 말하는가?,"반복, 재귀, 적응형 검색을 통한 상호 의존적 처리"
+조건부 패턴에서 사용되는 주요 기능은?,다양한 조건에 따른 파이프라인 선택
+분기 패턴이 제공하는 이점은?,병렬 실행을 통해 결과 다양성 증가
+Tuning Pattern의 역할은?,검색기와 생성기의 미세 조정을 통해 시스템 성능 최적화
+RAG의 한계 중 '출처 불명확성'을 개선하기 위한 기법은?,검색된 문서 출처를 명시하는 'Citation' 기능
+Modular RAG에서 'Reducer' 연산자의 역할은?,여러 개의 검색된 문서를 정리하여 최종 후보 선정
+Modular RAG의 'Summarizer' Operator는 무슨 역할을 하는가?,검색된 문서에서 핵심 내용 요약
+Modular RAG의 'Paraphraser' Operator 기능은?,자연스럽고 다양한 표현으로 변환
+금융 도메인에서 활용되는 RAG 패턴은?,"Text-to-SQL, Sentiment Analysis, Weighted Fusion"
+의료 도메인에서 Query Expansion이 필요한 이유는?,다양한 증상 표현을 포괄하여 검색 정확도 향상
+법률 도메인에서 Judge 모듈의 역할은?,질문 유형에 따라 적절한 검색 방식을 결정
+전자상거래 도메인에서 RRR 패턴의 구성 단계는?,Rewrite → Retrieve → Read
+GraphRAG에서 '구성기(Organizer)'의 역할은?,그래프 가지치기 및 외부 지식 보강
+GraphRAG를 구성하는 '생성기(Generator)'의 주요 기능은?,그래프 정보를 LLM에 공급하여 응답 생성
+GraphRAG의 데이터 소스 예시 세가지를 쓰시오.,"지식 그래프, 문서 그래프, 과학 그래프"
+Modular RAG에서 'Scheduling' Operator의 역할은?,Rule-based 또는 LLM 기반 의사결정 수행
+Modular RAG에서 'Fusion' Operator는 어떤 역할을 하는가?,"LLM Fusion, Weighted Ensemble, RRF 등을 통해 결과 융합"
+Advanced RAG의 쿼리 재작성에 사용되는 기법 'HyDE'는 무엇의 약자인가?,Hypothetical Document Embeddings
+RAG에서 'BM25'는 어떤 검색 방식의 일종인가?,Sparse Retrieval
+Modular RAG의 'Componentized Architecture' 장점 중 하나를 쓰시오.,유지보수가 용이
+LinkedIn GraphRAG에서는 검색 시 어떤 거리 측정 방법을 사용했는가?,코사인 유사도
