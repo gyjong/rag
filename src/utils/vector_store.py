@@ -177,6 +177,13 @@ class VectorStoreManager:
         if MILVUS_TOKEN:
             connection_args["token"] = MILVUS_TOKEN
 
+        if not os.path.exists(MILVUS_URI):
+            Milvus(
+                embedding_function=self.embeddings,
+                connection_args={"uri": MILVUS_URI},
+                index_params={"index_type": "FLAT", "metric_type": "L2"},
+            )
+
         return Milvus.from_documents(
             documents,
             self.embeddings,
