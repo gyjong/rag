@@ -53,7 +53,7 @@
 - **📊 투명한 메트릭**: 각 모듈별 성능 추적
 - **🎯 최적화 목표**: 최고 유연성 + 상황별 최적화
 
-#### 🌍 **Web Search RAG** - 실시간 정보 검색형 (신규)
+#### 🌍 **Web Search RAG** - 실시간 정보 검색형
 - **🔍 질문 의도 정제**: 
   - AI 기반 검색 쿼리 최적화 (한국어/영어 분별 생성)
   - 검색 의도 자동 분류 및 키워드 추출
@@ -1462,6 +1462,15 @@ rag/
     ├── ⚙️ config/                      # 설정 관리
     │   ├── __init__.py
     │   └── settings.py                 # 통합 설정
+    ├── 🕸️ graphs/                      # LangGraph 기반 실행 그래프
+    │   ├── advanced_rag_graph.py
+    │   ├── document_discovery_graph.py
+    │   ├── json_rag_graph.py
+    │   ├── modular_rag_graph.py
+    │   ├── naive_rag_graph.py
+    │   ├── report_generation_graph.py
+    │   ├── translation_graph.py
+    │   └── web_search_graph.py
     ├── 🧠 rag_systems/                 # RAG 시스템 구현
     │   ├── __init__.py
     │   ├── 📈 naive_rag.py             # 기본형 RAG
@@ -1480,10 +1489,11 @@ rag/
     │   ├── 🔍 vector_store_ui.py       # 벡터 스토어 (561 줄)
     │   ├── 🧪 rag_experiment_ui.py     # RAG 실험 (384 줄)
     │   ├── 🌍 web_search_ui.py         # 웹 검색 RAG UI (377 줄)
-    │   ├── 🔄 translation_ui.py        # 번역 RAG UI (412 줄, 신규)
-    │   ├── 📋 report_generation_ui.py  # 보고서 생성 RAG UI (506 줄, 신규)
-    │   ├── 🗂️ json_services_ui.py      # JSON 서비스 UI (347 줄, 신규)
-    │   └── 🔍 document_discovery_ui.py # 문서 발견 RAG UI (397 줄, 신규)
+    │   ├── 🔄 translation_ui.py        # 번역 RAG UI (412 줄)
+    │   ├── 📋 report_generation_ui.py  # 보고서 생성 RAG UI (506 줄)
+    │   ├── 🗂️ json_services_ui.py      # JSON 서비스 UI (347 줄)
+    │   ├── 🔍 document_discovery_ui.py # 문서 발견 RAG UI (397 줄)
+    │   └── 📊 ragas_evaluation_ui.py   # RAGAS 성능 평가 UI
     └── 🛠️ utils/                       # 핵심 유틸리티
         ├── __init__.py
         ├── 📄 document_processor.py    # JSON 처리 시스템
@@ -1629,7 +1639,7 @@ graph TD
 
 ## 📄 라이선스
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+이 프로젝트는 미소정보기술 소유입니다. 무단 복제 및 배포를 금지합니다.
 
 ## 🙏 감사의 글
 
@@ -1731,8 +1741,7 @@ MILVUS_URI=./milvus_local.db
 # MILVUS_TOKEN=your_token_here
 
 # 컬렉션 이름
-MILVUS_COLLECTION_NAME=rag_documents
-```
+MILVUS_COLLECTION_NAME=rag_documents```
 
 **3. Milvus Server 실행 (선택사항)**
 ```bash
