@@ -535,6 +535,27 @@ def safe_get(key, default=None):
 
 ### 📊 **성능 모니터링 & 분석**
 
+#### **Langfuse Tracing (신규)**
+이 프로젝트는 **[Langfuse](https://langfuse.com/)** 와 완벽하게 통합되어, RAG 파이프라인의 모든 단계를 시각적으로 추적하고 분석할 수 있습니다.
+- **Trace-based Debugging**: 요청부터 최종 답변까지 모든 LLM 호출, 검색 과정, 중간 결과물을 시각화합니다.
+- **성능 분석**: 각 노드의 지연 시간, 토큰 사용량, 비용을 자동으로 계산합니다.
+- **Playground**: 프로덕션 트레이스를 기반으로 프롬프트와 모델 파라미터를 안전하게 실험하고 최적화할 수 있습니다.
+- **품질 평가**: 사용자 피드백, 모델 기반 평가, 휴리스틱을 결합하여 답변 품질을 정량적으로 측정합니다.
+
+```python
+# Langfuse 핸들러 초기화 (src/config/__init__.py)
+from langfuse import Langfuse
+
+langfuse_handler = Langfuse(
+    public_key=os.environ.get("LANGFUSE_PUBLIC_KEY"),
+    secret_key=os.environ.get("LANGFUSE_SECRET_KEY"),
+    host=os.environ.get("LANGFUSE_HOST", "http://localhost:3000")
+)
+
+# 그래프 실행 시 콜백으로 전달
+graph.invoke(inputs, config={"callbacks": [langfuse_handler]})
+```
+
 #### **실시간 메트릭 수집**
 ```python
 # 성능 측정 데코레이터
@@ -574,9 +595,10 @@ def measure_performance(func):
 ### 1. 시스템 요구사항
 
 - Python 3.10 이상
+- Docker 및 Docker Compose
 - 4GB+ RAM (권장: 8GB+)
 - 2GB+ 디스크 공간 (모델 + 벡터 스토어)
-- Ollama 설치
+- Ollama 및 Langfuse 설치
 
 ### 2. Ollama 설치 및 설정
 
@@ -594,7 +616,22 @@ ollama serve
 ollama pull gemma3:4b-it-qat
 ```
 
-### 3. 프로젝트 설정
+### 3. Langfuse 설치 및 설정 (Docker)
+
+Langfuse는 RAG 파이프라인의 상세한 동작을 추적하고 디버깅하기 위한 오픈소스 관찰 가능성 플랫폼입니다. 로컬 환경에 Docker로 쉽게 설치할 수 있습니다.
+
+```bash
+# 1. Langfuse 저장소 클론
+git clone https://github.com/langfuse/langfuse.git
+cd langfuse
+
+# 2. Docker Compose로 Langfuse 실행
+# (백그라운드에서 실행하려면 -d 플래그 추가)
+docker compose up
+```
+실행이 완료되면 브라우저에서 `http://localhost:3000` 으로 접속하여 Langfuse UI를 확인할 수 있습니다.
+
+### 4. 프로젝트 설정
 
 ```bash
 # 저장소 클론
@@ -617,7 +654,7 @@ poetry install
 poetry shell
 ```
 
-### 4. 웹 검색 RAG 추가 설정 (신규)
+### 5. 웹 검색 RAG 추가 설정 (신규)
 
 ```bash
 # 웹 검색 기능 테스트
@@ -631,7 +668,7 @@ curl -I https://www.google.com
 python -c "import requests; print(requests.get('https://httpbin.org/user-agent').json())"
 ```
 
-### 5. 문서 준비
+### 6. 문서 준비
 
 프로젝트의 `docs/` 또는 `docs_backup/` 폴더에 분석할 PDF 문서들을 배치하세요. 포함된 샘플 문서들:
 
@@ -874,9 +911,22 @@ DOC_DISCOVERY_CACHE_DIR = "vector_stores/document_summaries"
 DOC_DISCOVERY_SUMMARY_MAX_LENGTH = 4000
 DOC_DISCOVERY_RELEVANCE_THRESHOLD = 30
 DOC_DISCOVERY_TOP_DOCUMENTS = 5
+
+# Langfuse 설정 (신규)
+# 환경변수(.env 파일)에서 로드하는 것을 권장합니다.
+# 예: LANGFUSE_PUBLIC_KEY="pk-lf-..."
+LANGFUSE_PUBLIC_KEY = "YOUR_PUBLIC_KEY"  # Langfuse 프로젝트 설정에서 확인
+LANGFUSE_SECRET_KEY = "YOUR_SECRET_KEY" # Langfuse 프로젝트 설정에서 확인
+LANGFUSE_HOST = "http://localhost:3000"
 ```
 
 ## 🆕 최신 업데이트 (v2.1)
+
+### 📊 **Langfuse 기반 성능 추적 시스템**
+- **LLM 호출 추적**: 모든 `invoke`, `stream`, `generate` 호출의 입력, 출력, 지연시간, 토큰 사용량 자동 추적
+- **Trace 기반 디버깅**: 복잡한 그래프(Modular RAG 등)의 실행 흐름을 시각적으로 디버깅
+- **Playground 연동**: 프로덕션 Trace를 Langfuse 플레이그라운드로 전송하여 프롬프트 최적화
+- **품질 평가**: 사용자 피드백과 연동하여 답변 품질 정량적 평가
 
 ### 🔄 **Orchestration Modules 구현**
 - **Routing Module**: 
@@ -1006,8 +1056,14 @@ DOC_DISCOVERY_TOP_DOCUMENTS = 5
 ## 📊 RAG 시스템 완전 분석
 
 ### 🔹 **Naive RAG** - 속도 최적화형
-```
-Architecture: [Query] → [Vector Search] → [LLM] → [Answer]
+```mermaid
+graph TD
+    A[Start] --> B["Vector Store<br/>Similarity Search"];
+    B --> C["LLM<br/>Direct Generation"];
+    C --> D[End];
+
+    classDef ragStyle fill:#f9f9f9,stroke:#333,stroke-width:2px,color:#000
+    class B,C ragStyle
 ```
 - **검색 방식**: 순수 코사인 유사도 (단일 벡터 검색)
 - **처리 시간**: 평균 2-3초 (최고 속도)
@@ -1021,8 +1077,17 @@ Architecture: [Query] → [Vector Search] → [LLM] → [Answer]
   - ❌ 복잡한 질문에 제한적
 
 ### 🔹 **Advanced RAG** - 정확도 최적화형
-```
-Architecture: [Query] → [Smart Expansion] → [Hybrid Search] → [Rerank] → [Compress] → [LLM] → [Answer]
+```mermaid
+graph TD
+    A[Start] --> B["Query Preprocessor"];
+    B --> C["Vector Store<br/>(Enhanced Search)"];
+    C --> D["Document Reranker"];
+    D --> E["Context Compressor"];
+    E --> F["LLM<br/>(Reasoning-based Generation)"];
+    F --> G[End];
+
+    classDef ragStyle fill:#f9f9f9,stroke:#333,stroke-width:2px,color:#000
+    class B,C,D,E,F ragStyle
 ```
 - **검색 방식**: 하이브리드 (Vector + BM25 + TF-IDF)
 - **핵심 혁신**:
@@ -1040,8 +1105,44 @@ Architecture: [Query] → [Smart Expansion] → [Hybrid Search] → [Rerank] →
   - ⚖️ 속도와 정확도 균형
 
 ### 🔹 **Modular RAG** - 적응형 최적화
-```
-Architecture: [Query] → [Routing] → [Module Selection] → [Adaptive Processing] → [Iteration Control] → [Answer]
+```mermaid
+graph TD
+    A[Start] --> B["Pre-retrieval"];
+    B --> C{"Route Query"};
+    C -->|RAG Path| D["Retrieval"];
+    C -->|Direct Answer| E["Generation"];
+    D --> F["Post-retrieval"];
+    F --> G["Generation"];
+    G --> H{"Orchestration"};
+    H -->|Continue| D;
+    H -->|End| I[End];
+    E --> I;
+
+    subgraph "Pre-retrieval"
+        B["Query Expansion<br/>Query Classification"];
+    end
+
+    subgraph "Retrieval"
+        D["Semantic<br/>BM25 Keyword<br/>Hybrid Merge"];
+    end
+
+    subgraph "Post-retrieval"
+        F["Filtering &<br/>Diversity"];
+    end
+
+    subgraph "Generation"
+        G["Answer Generation<br/>Confidence Estimation"];
+    end
+
+    subgraph "Orchestration"
+        H["Iteration Control"];
+    end
+
+    classDef ragStyle fill:#f9f9f9,stroke:#333,stroke-width:2px,color:#000
+    classDef directStyle fill:#e9f2fb,stroke:#3679c2,stroke-width:2px,color:#000
+
+    class B,D,F,G,H,C ragStyle
+    class E directStyle
 ```
 - **검색 방식**: 적응형 (상황별 최적 전략 선택)
 - **Orchestration Modules**:
@@ -1404,46 +1505,82 @@ rag/
 #### **1. 문서 처리 파이프라인**
 ```mermaid
 graph TD
-    A[PDF 업로드] --> B[DocumentProcessor]
-    B --> C[JSON 저장]
-    C --> D[청크 분할]
-    D --> E[메타데이터 생성]
-    E --> F[벡터화]
-    F --> G[영구 저장]
+    A["PDF 업로드/처리"] --> B["DocumentProcessor (구조화)"];
+    B --> C["JSON으로 저장 (캐시)"];
+    C --> D["Chunk 분할"];
+    D --> E["Embedding 및 벡터화"];
+    E --> F["Vector Store 저장"];
+
+    classDef flowStyle fill:#f9f9f9,stroke:#333,stroke-width:2px,color:#000
+    class A,B,C,D,E,F flowStyle
 ```
 
 #### **2. RAG 시스템 아키텍처**
 ```mermaid
-graph LR
-    Q[Query] --> R[Routing Module]
-    R --> N[Naive RAG]
-    R --> A[Advanced RAG] 
-    R --> M[Modular RAG]
+graph TD
+    subgraph "Input"
+        Q[Query]
+    end
+
+    subgraph "Preprocessing"
+        P1["Query Expansion"]
+        P2["Query Classification"]
+        Q --> P1 & P2
+    end
     
-    N --> VN[Vector Search]
-    A --> QE[Query Expansion]
-    M --> IC[Iteration Control]
+    subgraph "Routing"
+        R{"Routing Logic"}
+        P2 --> R
+    end
+
+    subgraph "Retrieval (Hybrid)"
+        RT1["Semantic Search"]
+        RT2["Keyword Search (BM25)"]
+        RT3["Merge & Deduplicate"]
+        R -- RAG Path --> RT1 & RT2 --> RT3
+    end
+
+    subgraph "Post-processing"
+        PP1["Reranking"]
+        PP2["Context Compression"]
+        RT3 --> PP1 --> PP2
+    end
+
+    subgraph "Generation"
+        G1["Answer Generation"]
+        G2["Confidence Scoring"]
+        R -- Direct Path --> G1
+        PP2 --> G1
+        G1 --> G2
+    end
     
-    VN --> LN[LLM]
-    QE --> HS[Hybrid Search]
-    IC --> AM[Adaptive Module]
+    subgraph "Orchestration"
+        O{"Iteration Control"}
+        G2 --> O
+    end
     
-    LN --> AN[Answer]
-    HS --> LM[LLM]
-    AM --> LMM[LLM]
-    
-    LM --> AA[Answer]
-    LMM --> MA[Answer]
+    subgraph "Output"
+        A[Final Answer]
+        O -- End --> A
+    end
+
+    O -- Continue --> RT1 & RT2
+
+    classDef block fill:#f9f9f9,stroke:#333,stroke-width:2px,color:#000
+    class Q,A,R,O,P1,P2,RT1,RT2,RT3,PP1,PP2,G1,G2 block
 ```
 
 #### **3. 벡터 스토어 동기화**
 ```mermaid
 graph TD
-    VS[Vector Store] --> ID[Generate ID]
-    ID --> SS[Session State]
-    SS --> CD[Change Detection]
-    CD --> RS[RAG Reset]
-    RS --> NI[New Initialization]
+    A["Vector Store 변경"] --> B["고유 ID 생성/업데이트"];
+    B --> C["세션 상태에 ID 저장"];
+    C --> D["UI/RAG 시스템과<br/>ID 비교/변경 감지"];
+    D --> E["변경 시, RAG 시스템<br/>자동 재설정"];
+    E --> F["새로운 RAG 인스턴스<br/>초기화"];
+
+    classDef flowStyle fill:#f9f9f9,stroke:#333,stroke-width:2px,color:#000
+    class A,B,C,D,E,F flowStyle
 ```
 
 ### 🧩 **모듈 의존성 관계**
