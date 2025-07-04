@@ -124,6 +124,13 @@ class DocumentLoadingUI:
         """Display PDF processing options and handle loading."""
         st.write("### ⚙️ 처리 옵션")
         
+        # Add chunking strategy option
+        merge_pages = st.checkbox(
+            "📄 파일 내 페이지 병합 후 청킹", 
+            value=True, 
+            help="**권장**: PDF 같은 다중 페이지 파일의 모든 페이지를 하나로 합친 후 청킹합니다. 페이지 경계 없이 일관된 크기로 분할되어 문서의 논리적 흐름을 유지하는 데 유리합니다. (개별 청크의 페이지 번호는 추적되지 않음)"
+        )
+        
         # Generate default filenames based on selected files
         if len(selected_files) == 1:
             # Single file
@@ -162,13 +169,13 @@ class DocumentLoadingUI:
                 return
             
             DocumentLoadingUI._process_pdf_files(
-                selected_files, save_docs_json, save_chunks_json,
+                selected_files, merge_pages, save_docs_json, save_chunks_json,
                 docs_json_name if save_docs_json else None,
                 chunks_json_name if save_chunks_json else None
             )
     
     @staticmethod
-    def _process_pdf_files(selected_files, save_docs_json, save_chunks_json, docs_json_name, chunks_json_name):
+    def _process_pdf_files(selected_files, merge_pages, save_docs_json, save_chunks_json, docs_json_name, chunks_json_name):
         """Process selected PDF files."""
         # Initialize document processor
         doc_processor = DocumentProcessor(st.session_state.chunk_size, st.session_state.chunk_overlap)
@@ -221,7 +228,7 @@ class DocumentLoadingUI:
             
             # Split documents
             with st.spinner("🧩 문서 청크 분할 중..."):
-                chunks = doc_processor.split_documents(documents)
+                chunks = doc_processor.split_documents(documents, merge_pages=merge_pages)
             
             st.session_state.document_chunks = chunks
             st.session_state.documents_loaded = True

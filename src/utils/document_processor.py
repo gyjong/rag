@@ -312,23 +312,67 @@ class DocumentProcessor:
             st.error(f"❌ JSON 로딩 실패: {str(e)}")
             return []
 
-    def split_documents(self, documents: List[Document]) -> List[Document]:
-        """Split documents into chunks.
+    def split_documents(self, documents: List[Document], merge_pages: bool) -> List[Document]:
+        """Split documents into smaller chunks.
         
         Args:
-            documents: List of documents to split
-            
+            documents: List of documents to split.
+            merge_pages: If True, combines pages of a single file before chunking.
+                         If False, chunks each page individually.
+                   
         Returns:
-            List of document chunks
+            List of chunked documents
         """
         if not documents:
             return []
+
+        if merge_pages:
+            # Group documents by file path to process them as single entities
+            docs_by_file: Dict[str, List[Document]] = {}
+            for doc in documents:
+                file_path = doc.metadata.get("file_path")
+                if not file_path:
+                    # Handle documents without a file path, treat them as a single group
+                    file_path = "unknown_source"
+                
+                if file_path not in docs_by_file:
+                    docs_by_file[file_path] = []
+                docs_by_file[file_path].append(doc)
+
+            all_chunks = []
+            for file_path, docs in docs_by_file.items():
+                if not docs:
+                    continue
+
+                # For multi-page documents (like PDFs), combine page content
+                if len(docs) > 1 and all(d.metadata.get("page_number") is not None for d in docs):
+                    # Sort pages by page number to maintain logical order
+                    docs.sort(key=lambda d: d.metadata.get("page_number", 0))
+                    
+                    full_text = "\n".join([doc.page_content for doc in docs])
+                    
+                    # Use metadata from the first page, but remove page-specific info
+                    combined_metadata = docs[0].metadata.copy()
+                    combined_metadata.pop("page_number", None)
+                    combined_metadata.pop("page", None)
+                    combined_metadata.pop("page_label", None)
+                    
+                    combined_doc = Document(page_content=full_text, metadata=combined_metadata)
+                    
+                    file_chunks = self.text_splitter.split_documents([combined_doc])
+                else:
+                    # For single-page docs or docs not from PDFs, split them directly
+                    file_chunks = self.text_splitter.split_documents(docs)
+
+                all_chunks.extend(file_chunks)
+        else:
+            # Original method: split each document (page) individually
+            all_chunks = self.text_splitter.split_documents(documents)
             
-        with st.spinner("문서 분할 중..."):
-            chunks = self.text_splitter.split_documents(documents)
-            
-        # Add enhanced chunk metadata
-        for i, chunk in enumerate(chunks):
+        # Add chunk-specific metadata to all generated chunks
+        for i, chunk in enumerate(all_chunks):
+            # Page number tracking is complex/unreliable after merging, so it's omitted
+            # in the merged case. For the non-merged case, it's in original metadata.
             chunk.metadata.update({
                 "chunk_id": i,
                 "chunk_size": len(chunk.page_content),
@@ -336,11 +380,10 @@ class DocumentProcessor:
                 "chunked_at": datetime.now().isoformat()
             })
             
-        st.success(f"문서가 {len(chunks)}개의 청크로 분할되었습니다.")
-        return chunks
+        return all_chunks
 
     def save_chunks_to_json(self, chunks: List[Document], output_path: Path) -> bool:
-        """Save document chunks to JSON format.
+        """Save chunked documents to a JSON file.
         
         Args:
             chunks: List of chunks to save
