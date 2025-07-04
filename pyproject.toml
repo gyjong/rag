@@ -50,7 +50,9 @@ dependencies = [
     "langchain-openai (>=0.3.27,<0.4.0)",
     "langchain-google-genai (>=2.1.6,<3.0.0)",
     "langfuse (>=3.1.1,<4.0.0)",
-    "deptry (>=0.23.0,<0.24.0)"
+    "deptry (>=0.23.0,<0.24.0)",
+    "ragas (>=0.2.15,<0.3.0)",
+    "datasets (>=3.6.0,<4.0.0)"
 ]
 
 

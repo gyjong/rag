@@ -452,13 +452,13 @@ class RAGExperimentUI:
 
         if bm25_index:
             st.success(f"✅ BM25 인덱스가 준비되었습니다. ({bm25_docs_count}개 문서 인덱싱됨)")
-            if st.button("🔄 BM25 인덱스 재생성"):
+            if st.button("🔄 BM25 인덱스 재생성", key="experiment_regenerate_bm25"):
                 st.session_state.pop("bm25_index", None)
                 st.session_state.pop("bm25_documents", None)
                 st.rerun()
         else:
             st.warning("BM25 키워드 검색을 위해 인덱스 생성이 필요합니다.")
-            if st.button("🚀 BM25 인덱스 생성"):
+            if st.button("🚀 BM25 인덱스 생성", key="experiment_create_bm25"):
                 try:
                     with st.spinner("벡터 스토어에서 문서를 로드하여 BM25 인덱스를 생성합니다..."):
                         vector_store_manager = st.session_state.get("vector_store_manager")
@@ -468,10 +468,8 @@ class RAGExperimentUI:
 
                         vector_store = vector_store_manager.get_vector_store()
                         
-                        # 벡터 스토어의 모든 문서를 가져오기 위해 전체 문서 수를 먼저 확인합니다.
-                        # 이는 특정 벡터스토어 구현에 대한 의존성을 줄입니다.
                         stats = vector_store_manager.get_collection_stats()
-                        total_docs = stats.get("document_count", 1000) # Fallback
+                        total_docs = stats.get("document_count", 1000)
                         
                         if total_docs == 0:
                             st.error("인덱싱할 문서가 벡터 스토어에 없습니다.")

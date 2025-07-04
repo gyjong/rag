@@ -32,6 +32,7 @@ from src.ui.json_services_ui import JSONServicesUI
 from src.ui.report_generation_ui import ReportGenerationUI
 from src.ui.document_discovery_ui import DocumentDiscoveryUI
 from src.ui.web_search_ui import WebSearchUI
+from src.ui.ragas_evaluation_ui import RagasEvaluationUI
 
 
 def get_or_create_vector_store_manager() -> Optional[VectorStoreManager]:
@@ -220,26 +221,33 @@ def main():
 
     # Main tabs
     tabs = st.tabs([
-        "📚 문서 로딩", "🔍 벡터 스토어", "🧪 RAG 실험", "📊 결과 비교", "📋 보고서 생성",
-        "🌐 문서 번역", "🏢 정보 서비스", "🔍 문서 발견", "🌍 웹 검색 RAG", "ℹ️ 소개"
+        "📚 문서 로딩", "🔍 벡터 스토어", "🧪 RAG 실험", "📊 결과 비교", "📊 결과 평가",
+        "📋 보고서 생성", "🌐 문서 번역", "🏢 정보 서비스", "🔍 문서 발견", "🌍 웹 검색 RAG",
+        "ℹ️ 소개"
     ])
 
-    tab_map = {
-        tabs[0]: DocumentLoadingUI.display_document_loading_tab,
-        tabs[1]: VectorStoreUI.display_vector_store_tab,
-        tabs[2]: RAGExperimentUI.display_rag_experiment_tab,
-        tabs[3]: ComparisonUI.display_comparison_tab,
-        tabs[4]: ReportGenerationUI.display_report_generation_tab,
-        tabs[5]: TranslationUI.display_translation_tab,
-        tabs[6]: JSONServicesUI.display_json_services_tab,
-        tabs[7]: DocumentDiscoveryUI.display_document_discovery_tab,
-        tabs[8]: WebSearchUI.display_web_search_tab,
-        tabs[9]: AboutUI.display_about_tab,
-    }
-
-    for tab, display_func in tab_map.items():
-        with tab:
-            display_func()
+    with tabs[0]:
+        DocumentLoadingUI.display_document_loading_tab()
+    with tabs[1]:
+        VectorStoreUI.display_vector_store_tab()
+    with tabs[2]:
+        RAGExperimentUI.display_rag_experiment_tab()
+    with tabs[3]:
+        ComparisonUI.display_comparison_tab()
+    with tabs[4]:
+        RagasEvaluationUI().display()
+    with tabs[5]:
+        ReportGenerationUI.display_report_generation_tab()
+    with tabs[6]:
+        TranslationUI.display_translation_tab()
+    with tabs[7]:
+        JSONServicesUI.display_json_services_tab()
+    with tabs[8]:
+        DocumentDiscoveryUI.display_document_discovery_tab()
+    with tabs[9]:
+        WebSearchUI.display_web_search_tab()
+    with tabs[10]:
+        AboutUI.display_about_tab()
 
 
 if __name__ == "__main__":
