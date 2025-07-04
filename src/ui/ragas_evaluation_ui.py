@@ -5,6 +5,14 @@ import pandas as pd
 from datasets import Dataset
 
 from ..config import *
+from ..config.settings import (
+    RAGAS_EVALUATION_METRICS,
+    RAGAS_SAMPLE_SIZE,
+    RAGAS_TIMEOUT,
+    RAGAS_BATCH_SIZE,
+    RAGAS_AVAILABLE_MODELS,
+    RAGAS_RESULTS_DIR
+)
 from ..graphs.naive_rag_graph import create_naive_rag_graph
 from ..graphs.advanced_rag_graph import create_advanced_rag_graph
 from ..graphs.modular_rag_graph import create_modular_rag_graph
@@ -12,6 +20,16 @@ from ..rag_systems.modular_rag import BM25
 from ..utils.vector_store import VectorStoreManager
 from ..utils.llm_manager import LLMManager
 from src.config import langfuse_handler
+
+# 모델 이름 매핑 (설정의 소문자 -> UI 표시용 대문자)
+MODEL_NAME_MAPPING = {
+    "naive": "Naive RAG",
+    "advanced": "Advanced RAG", 
+    "modular": "Modular RAG"
+}
+
+# 역방향 매핑 (UI -> 설정)
+REVERSE_MODEL_MAPPING = {v: k for k, v in MODEL_NAME_MAPPING.items()}
 
 class RagasEvaluationUI:
     """UI for RAG model evaluation using RAGAS."""
@@ -120,6 +138,7 @@ class RagasEvaluationUI:
                 "question": ["RAG의 한계는 무엇인가요?"],
                 "ground_truth": ["RAG는 검색된 문서의 품질에 따라 답변의 정확성이 크게 좌우되며, 관련 없는 정보가 검색되면 환각(Hallucination) 현상이 발생할 수 있습니다. 또한, 실시간 정보나 최신 데이터를 반영하는 데 한계가 있을 수 있습니다."]
             }
+            # 설정된 샘플 크기만큼 데이터를 생성 (기본값 사용)
             st.session_state.eval_df = pd.DataFrame(sample_data)
 
         # Display editable dataframe
@@ -160,10 +179,12 @@ class RagasEvaluationUI:
         col1, col2 = st.columns([1, 2])
         
         with col1:
+            # 설정에서 가져온 모델들을 UI용 이름으로 변환
+            available_model_names = [MODEL_NAME_MAPPING[model] for model in RAGAS_AVAILABLE_MODELS]
             models_to_evaluate = st.multiselect(
                 "평가할 모델을 선택하세요.",
-                options=["Naive RAG", "Advanced RAG", "Modular RAG"],
-                default=["Naive RAG", "Advanced RAG", "Modular RAG"]
+                options=available_model_names,
+                default=available_model_names
             )
         
         with col2:
@@ -251,9 +272,22 @@ class RagasEvaluationUI:
                     from ragas import evaluate
                     from ragas.metrics import faithfulness, answer_relevancy, context_recall, context_precision
                     
+                    # 설정에서 지정된 메트릭들을 동적으로 가져오기
+                    metrics = []
+                    metric_map = {
+                        "faithfulness": faithfulness,
+                        "answer_relevancy": answer_relevancy,
+                        "context_recall": context_recall,
+                        "context_precision": context_precision
+                    }
+                    
+                    for metric_name in RAGAS_EVALUATION_METRICS:
+                        if metric_name in metric_map:
+                            metrics.append(metric_map[metric_name])
+                    
                     score = evaluate(
                         result_dataset,
-                        metrics=[faithfulness, answer_relevancy, context_recall, context_precision],
+                        metrics=metrics,
                     )
                     
                     st.session_state.evaluation_results[model_name] = score.to_pandas()
@@ -266,6 +300,40 @@ class RagasEvaluationUI:
 
         progress_text.text("모든 평가 완료!")
         st.session_state.evaluation_running = False
+        
+        # 평가 결과 저장 (선택사항)
+        if st.session_state.evaluation_results:
+            self._save_evaluation_results()
+
+    def _save_evaluation_results(self):
+        """평가 결과를 설정된 경로에 저장합니다."""
+        try:
+            import json
+            import os
+            from datetime import datetime
+            
+            # 결과 디렉토리 생성
+            RAGAS_RESULTS_DIR.mkdir(parents=True, exist_ok=True)
+            
+            # 결과 데이터 준비
+            results_data = {
+                "timestamp": datetime.now().isoformat(),
+                "evaluation_metrics": RAGAS_EVALUATION_METRICS,
+                "results": {}
+            }
+            
+            for model_name, result_df in st.session_state.evaluation_results.items():
+                results_data["results"][model_name] = {
+                    "detailed_scores": result_df.to_dict(),
+                    "average_scores": result_df.mean(numeric_only=True).to_dict()
+                }
+            
+            # JSON 파일로 저장
+            with open(RAGAS_RESULTS_DIR / f"evaluation_results_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json", 'w', encoding='utf-8') as f:
+                json.dump(results_data, f, ensure_ascii=False, indent=2)
+                
+        except Exception as e:
+            st.warning(f"평가 결과 저장 중 오류 발생: {e}")
 
     def _display_results(self):
         """Displays the evaluation results."""

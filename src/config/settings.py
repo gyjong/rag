@@ -175,3 +175,29 @@ langfuse = Langfuse(
 )
 
 langfuse_handler = CallbackHandler()
+
+# ========== RAGAS 평가 설정 ==========
+# RAGAS 평가에 사용할 메트릭들
+RAGAS_EVALUATION_METRICS = [
+    "answer_relevancy",
+    "faithfulness", 
+    "context_recall",
+    "context_precision"
+]
+
+# RAGAS 평가 기본 설정
+RAGAS_SAMPLE_SIZE = 10      # 평가용 샘플 데이터셋 기본 크기
+RAGAS_TIMEOUT = 300         # 평가 타임아웃 (초)
+RAGAS_BATCH_SIZE = 5        # 배치 처리 크기
+RAGAS_RANDOM_SEED = 42      # 재현 가능한 결과를 위한 시드
+
+# RAGAS 평가 대상 RAG 시스템
+RAGAS_AVAILABLE_MODELS = [
+    "naive",
+    "advanced", 
+    "modular"
+]
+
+# RAGAS 평가 결과 저장 경로
+RAGAS_RESULTS_DIR = PROJECT_ROOT / "ragas_dataset"
+RAGAS_RESULTS_FILE = RAGAS_RESULTS_DIR / "evaluation_results.json"

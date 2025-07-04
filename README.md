@@ -1,10 +1,10 @@
 # 🤖 RAG Systems Comparison Tool
 
-**차세대 8가지 RAG 패러다임 통합 실험 및 비교 플랫폼**
+**8가지 RAG 패러다임 통합 실험 및 비교 플랫폼**
 
 ## 📋 개요
 
-이 애플리케이션은 **8가지 주요 RAG (Retrieval-Augmented Generation) 패러다임**을 실제로 비교하고 실험할 수 있도록 설계된 **차세대 Streamlit 기반 통합 도구**입니다. 
+이 애플리케이션은 **8가지 주요 RAG (Retrieval-Augmented Generation) 패러다임**을 실제로 비교하고 실험할 수 있도록 설계된 **Streamlit 기반 통합 도구**입니다. 
 
 **🚀 혁신적 기능들**:
 - **8가지 RAG 시스템**: 
@@ -39,7 +39,7 @@
 - **⚖️ 하이브리드 검색**: 벡터 + BM25 + TF-IDF 점수 통합
 - **🎯 최적화 목표**: 최고 정확도 (신뢰도 0.7+)
 
-#### 🧩 **Modular RAG** - 차세대 아키텍처
+#### 🧩 **Modular RAG** - 아키텍처
 - **🔀 Orchestration Modules**: 
   - **Routing Module**: 질문 유형별 처리 경로 자동 결정
     - `factual` → precise_path (정확성 우선)
@@ -76,7 +76,7 @@
   - 오류 발생 시 상세 디버깅 정보 제공
 - **🎯 최적화 목표**: 최신 정보 + 실시간 분석 + 투명성
 
-#### 🔄 **Translation RAG** - 문서 번역 전문형 (신규)
+#### 🔄 **Translation RAG** - 문서 번역 전문형
 - **📝 지능형 문서 번역**: 
   - 영어→한국어 전문 번역 엔진
   - 문장 단위 정밀 분할 및 번역
@@ -91,7 +91,7 @@
   - 번역 히스토리 추적
 - **🎯 최적화 목표**: 번역 정확도 + 용어 일관성 + 진행 투명성
 
-#### 📋 **Report Generation RAG** - 구조화 보고서 생성형 (신규)
+#### 📋 **Report Generation RAG** - 구조화 보고서 생성형 
 - **🎯 토픽 기반 문서 수집**: 
   - 주제별 다중 쿼리 검색 (동향/분석/현황/전망)
   - 중복 제거 및 관련성 순 정렬
@@ -106,7 +106,7 @@
   - 참고 문헌 자동 생성
 - **🎯 최적화 목표**: 보고서 품질 + 구조화 + 실시간 생성
 
-#### 🗂️ **JSON RAG** - 구조화 데이터 전문형 (신규)
+#### 🗂️ **JSON RAG** - 구조화 데이터 전문형 
 - **📊 구조화 데이터 처리**: 
   - 버스 스케줄, 메뉴 정보 등 JSON 데이터 활용
   - 키워드 매칭 + 유사도 계산 하이브리드 검색
@@ -121,7 +121,7 @@
   - 구조화된 답변 생성
 - **🎯 최적화 목표**: 정확한 데이터 검색 + 구조화 답변 + 실시간성
 
-#### 🔍 **Document Discovery RAG** - 2단계 문서 발견형 (신규)
+#### 🔍 **Document Discovery RAG** - 2단계 문서 발견형 
 - **📚 1단계: 문서 발견**: 
   - 모든 문서 자동 요약 생성 및 캐싱
   - 질문-문서 관련성 점수 (0-100점) 평가
@@ -144,8 +144,9 @@
 - **🗂️ 벡터 스토어 관리**: 생성/로딩/관리/삭제 완전 생명주기 지원
 - **🔄 자동 동기화**: 벡터 스토어 변경 감지 및 RAG 시스템 자동 재설정
 - **🛡️ 안전한 세션 관리**: AttributeError 방지 및 graceful 실패 처리
+- **📊 RAGAS 성능 평가**: Answer Relevancy, Faithfulness 등 정량적 평가
 
-## 🛠️ 차세대 기술 스택 완전 분석
+## 🛠️ 기술 스택 완전 분석
 
 ### 🎨 **Frontend & UI 기술**
 
@@ -213,7 +214,7 @@ llm = OllamaLLM(
 - ✅ **속도**: 네트워크 지연 없음
 - ✅ **커스터마이징**: 모델 파라미터 자유 조정
 
-#### **웹 검색 & 크롤링 기술 (신규)**
+#### **웹 검색 & 크롤링 기술 **
 ```python
 # Google 검색 연동
 from googlesearch import search
@@ -237,7 +238,7 @@ soup = BeautifulSoup(response.content, 'html.parser')
 - ✅ **자동 정제**: 불필요한 요소 자동 제거
 - ✅ **에러 처리**: Rate limiting 및 실패 시 복구
 
-#### **전문 RAG 시스템 기술 스택 (신규)**
+#### **전문 RAG 시스템 기술 스택 **
 ```python
 # Translation RAG - 문서 번역 기술
 import re
@@ -486,7 +487,7 @@ langchain-huggingface = ">=0.3.0,<0.4.0"
 chromadb = ">=1.0.13,<2.0.0"
 sentence-transformers = ">=4.1.0,<5.0.0"
 faiss-cpu = ">=1.11.0,<2.0.0"
-# 웹 검색 RAG 전용 패키지 (신규)
+# 웹 검색 RAG 전용 패키지 
 googlesearch-python = ">=1.2.5,<2.0.0"
 beautifulsoup4 = ">=4.12.3,<5.0.0"
 lxml = ">=5.3.0,<6.0.0"
@@ -535,7 +536,7 @@ def safe_get(key, default=None):
 
 ### 📊 **성능 모니터링 & 분석**
 
-#### **Langfuse Tracing (신규)**
+#### **Langfuse Tracing **
 이 프로젝트는 **[Langfuse](https://langfuse.com/)** 와 완벽하게 통합되어, RAG 파이프라인의 모든 단계를 시각적으로 추적하고 분석할 수 있습니다.
 - **Trace-based Debugging**: 요청부터 최종 답변까지 모든 LLM 호출, 검색 과정, 중간 결과물을 시각화합니다.
 - **성능 분석**: 각 노드의 지연 시간, 토큰 사용량, 비용을 자동으로 계산합니다.
@@ -554,6 +555,34 @@ langfuse_handler = Langfuse(
 
 # 그래프 실행 시 콜백으로 전달
 graph.invoke(inputs, config={"callbacks": [langfuse_handler]})
+```
+
+#### **RAGAS 기반 성능 평가**
+이 프로젝트는 **[RAGAS](https://docs.ragas.io/)** 프레임워크를 통합하여 RAG 파이프라인의 품질을 정량적으로 평가합니다. 사용자가 직접 제공한 질문과 정답(`ground_truth`) 데이터셋을 기반으로 각 RAG 시스템의 성능을 객관적인 지표로 측정합니다.
+
+- **자동화된 평가**: 데이터셋만 업로드하면 Naive, Advanced, Modular RAG 시스템을 자동으로 평가합니다.
+- **핵심 품질 메트릭**:
+  - `answer_relevancy`: 생성된 답변이 질문과 얼마나 관련이 있는지를 평가합니다.
+  - `faithfulness`: 생성된 답변이 제공된 컨텍스트(검색된 문서)에 얼마나 충실한지를 평가합니다. (환각 현상 측정)
+  - `context_recall`: 검색된 컨텍스트가 정답을 도출하는 데 필요한 모든 정보를 포함하는지를 평가합니다.
+  - `context_precision`: 검색된 컨텍스트 중 실제로 답변 생성에 사용된 유용한 정보의 비율을 평가합니다.
+- **결과 시각화**: 평가 결과를 테이블과 차트로 시각화하여 시스템 간의 장단점을 명확하게 비교할 수 있습니다.
+
+```python
+# RAGAS 평가 실행 (src/ui/ragas_evaluation_ui.py)
+from ragas import evaluate
+from ragas.metrics import answer_relevancy, faithfulness, context_recall, context_precision
+
+# 평가 실행
+result = evaluate(
+    dataset=result_dataset,
+    metrics=[
+        context_precision,
+        faithfulness,
+        answer_relevancy,
+        context_recall,
+    ],
+)
 ```
 
 #### **실시간 메트릭 수집**
@@ -644,9 +673,11 @@ pip install -r requirements.txt
 # 또는 개별 설치
 pip install streamlit langchain langchain-ollama
 pip install chromadb faiss-cpu sentence-transformers
-# 웹 검색 RAG 전용 패키지 (신규)
+# 웹 검색 RAG 전용 패키지 
 pip install googlesearch-python beautifulsoup4 lxml urllib3
 pip install requests pandas numpy plotly
+# RAGAS 성능 평가 패키지
+pip install ragas
 
 # 선택사항: Poetry 사용
 curl -sSL https://install.python-poetry.org | python3 -
@@ -654,7 +685,7 @@ poetry install
 poetry shell
 ```
 
-### 5. 웹 검색 RAG 추가 설정 (신규)
+### 5. 웹 검색 RAG 추가 설정 
 
 ```bash
 # 웹 검색 기능 테스트
@@ -736,7 +767,7 @@ streamlit run app.py
 3. **질문 입력**: 직접 입력 또는 카테고리별 샘플 질문
 4. **실험 실행**: 실시간 처리 과정 모니터링
 
-#### Step 4: 🌍 웹 검색 RAG (신규)
+#### Step 4: 🌍 웹 검색 RAG 
 **실시간 웹 정보 검색 및 전문가 답변 생성**
 
 1. **검색 설정 조정**: 
@@ -760,7 +791,7 @@ streamlit run app.py
    - **📊 분석 과정**: 정보 분석 및 신뢰도 평가 과정
    - **📝 전체 과정**: 처리 단계 및 결과 내보내기
 
-#### Step 5: 🔄 Translation RAG (신규)
+#### Step 5: 🔄 Translation RAG 
 **영어 문서를 한국어로 전문 번역**
 
 1. **번역 설정**: 
@@ -781,7 +812,7 @@ streamlit run app.py
    - **번역 통계**: 총 문장 수, 성공률, 소요 시간
    - **결과 내보내기**: JSON/텍스트 형태 다운로드
 
-#### Step 6: 📋 Report Generation RAG (신규)
+#### Step 6: 📋 Report Generation RAG 
 **구조화된 전문 보고서 자동 생성**
 
 1. **보고서 설정**: 
@@ -802,7 +833,7 @@ streamlit run app.py
    - **참고 문헌**: 자동 생성된 출처 목록
    - **생성 과정**: 섹션별 생성 시간 및 통계
 
-#### Step 7: 🗂️ JSON RAG (신규)
+#### Step 7: 🗂️ JSON RAG 
 **구조화된 데이터 정확한 검색 및 조회**
 
 1. **데이터 소스 선택**: 
@@ -823,8 +854,8 @@ streamlit run app.py
    - **원본 데이터**: JSON 구조 그대로 표시
    - **검색 통계**: 매칭도, 검색 시간, 결과 수
 
-#### Step 8: 🔍 Document Discovery RAG (신규)
-**2단계 지능형 문서 발견 및 상세 검색**
+#### Step 8: 🔍 Document Discovery RAG 
+**2단계 지능형 문서 발견형 
 
 1. **문서 요약 생성**: 
    - 전체 문서 자동 요약 (1회성)
@@ -852,6 +883,27 @@ streamlit run app.py
 - **성능 인사이트**: 최고 속도, 고신뢰도, 반복 개선 시스템 자동 식별
 - **처리 흐름**: 완전 개편된 Mermaid 다이어그램
 - **웹 검색 비교**: 내부 문서 vs 실시간 웹 정보 성능 비교
+
+#### Step 10: 📊 RAGAS 성능 평가
+**RAG 시스템 정량적 품질 평가**
+
+1. **평가 데이터셋 준비**:
+   - `question`과 `ground_truth` 컬럼을 포함하는 데이터셋을 직접 입력하거나 CSV/JSON 파일로 업로드합니다.
+   
+2. **평가 모델 선택**:
+   - 평가할 RAG 시스템(Naive, Advanced, Modular)을 선택합니다.
+   
+3. **BM25 인덱스 생성 (Modular RAG용)**:
+   - Modular RAG를 평가하려면, 사전에 BM25 인덱스를 생성해야 합니다.
+   
+4. **평가 실행**:
+   - '평가 시작' 버튼을 클릭하면 선택된 모델들에 대해 RAGAS 평가가 진행됩니다.
+   
+5. **결과 분석**:
+   - **핵심 메트릭**: `answer_relevancy`, `faithfulness`, `context_recall`, `context_precision` 점수 확인
+   - **시스템 비교**: 각 RAG 시스템별 성능 비교 분석
+   - **결과 시각화**: DataFrame과 차트를 통한 시각적 비교
+   - **성능 인사이트**: 각 시스템의 강점과 약점 분석
 
 ## 🔧 설정 커스터마이징
 
@@ -881,43 +933,49 @@ MAX_ITERATIONS = 3
 CONFIDENCE_THRESHOLD = 0.8
 ROUTING_THRESHOLD = 0.6
 
-# Web Search RAG 설정 (신규)
+# Web Search RAG 설정 
 WEB_SEARCH_RESULTS = 5
 WEB_SEARCH_TIMEOUT = 10
 WEB_SEARCH_DELAY = 2
 WEB_CONTENT_MAX_LENGTH = 3000
 USER_AGENT = "Mozilla/5.0 (compatible; RAG-Bot/1.0)"
 
-# Translation RAG 설정 (신규)
+# Translation RAG 설정 
 TRANSLATION_SOURCE_LANG = "English"
 TRANSLATION_TARGET_LANG = "Korean"
 TRANSLATION_BATCH_SIZE = 10
 TRANSLATION_TIMEOUT = 30
 
-# Report Generation RAG 설정 (신규) 
+# Report Generation RAG 설정  
 REPORT_DEFAULT_LENGTH = "medium"
 REPORT_DEFAULT_AUDIENCE = "일반인"
 REPORT_STREAMING_DELAY = 0.1
 REPORT_MAX_SECTIONS = 10
 
-# JSON RAG 설정 (신규)
+# JSON RAG 설정 
 JSON_SIMILARITY_THRESHOLD = 0.3
 JSON_MAX_RESULTS = 10
 JSON_MENU_CACHE_HOURS = 24
 JSON_BUS_CACHE_MINUTES = 30
 
-# Document Discovery RAG 설정 (신규)
+# Document Discovery RAG 설정 
 DOC_DISCOVERY_CACHE_DIR = "vector_stores/document_summaries"
 DOC_DISCOVERY_SUMMARY_MAX_LENGTH = 4000
 DOC_DISCOVERY_RELEVANCE_THRESHOLD = 30
 DOC_DISCOVERY_TOP_DOCUMENTS = 5
 
-# Langfuse 설정 (신규)
+# Langfuse 설정 
 # 환경변수(.env 파일)에서 로드하는 것을 권장합니다.
 # 예: LANGFUSE_PUBLIC_KEY="pk-lf-..."
 LANGFUSE_PUBLIC_KEY = "YOUR_PUBLIC_KEY"  # Langfuse 프로젝트 설정에서 확인
 LANGFUSE_SECRET_KEY = "YOUR_SECRET_KEY" # Langfuse 프로젝트 설정에서 확인
 LANGFUSE_HOST = "http://localhost:3000"
+
+# RAGAS 평가 설정
+RAGAS_EVALUATION_METRICS = ["answer_relevancy", "faithfulness", "context_recall", "context_precision"]
+RAGAS_SAMPLE_SIZE = 10  # 평가용 샘플 데이터셋 기본 크기
+RAGAS_TIMEOUT = 300     # 평가 타임아웃 (초)
+RAGAS_BATCH_SIZE = 5    # 배치 처리 크기
 ```
 
 ## 🆕 최신 업데이트 (v2.1)
@@ -975,7 +1033,7 @@ LANGFUSE_HOST = "http://localhost:3000"
   - 실시간 진행 상황 표시 + 디버깅 정보
   - JSON/텍스트 결과 내보내기 기능
 
-### 🔄 **Translation RAG 시스템 구현 (신규)**
+### 🔄 **Translation RAG 시스템 구현 **
 - **고급 문장 분할 엔진**:
   - 정규식 기반 문장 경계 감지 (`(?<=[.!?])\s+(?=[A-Z])`)
   - 리스트, 문단 구조 보존 처리
@@ -993,7 +1051,7 @@ LANGFUSE_HOST = "http://localhost:3000"
   - JSON/텍스트 내보내기 기능
   - 번역 품질 메트릭 및 히스토리
 
-### 📋 **Report Generation RAG 시스템 구현 (신규)**
+### 📋 **Report Generation RAG 시스템 구현 **
 - **토픽 기반 지능형 검색**:
   - 다중 쿼리 전략 (동향/분석/현황/전망/기술)
   - 중복 제거 (content hash 기반)
@@ -1011,7 +1069,7 @@ LANGFUSE_HOST = "http://localhost:3000"
   - 시각적 플레이스홀더 삽입
   - 섹션별 생성 시간 및 통계 추적
 
-### 🗂️ **JSON RAG 시스템 구현 (신규)**
+### 🗂️ **JSON RAG 시스템 구현 **
 - **구조화 데이터 프로세서**:
   - JSON 파일 타입별 특화 로더 (버스/메뉴)
   - 다중 필드 검색 (번호/이름/위치/시간/카테고리)
@@ -1029,7 +1087,7 @@ LANGFUSE_HOST = "http://localhost:3000"
   - 검색 통계 (매칭도, 결과 수, 처리 시간)
   - 데이터 소스별 컨텍스트 포맷팅
 
-### 🔍 **Document Discovery RAG 시스템 구현 (신규)**
+### 🔍 **Document Discovery RAG 시스템 구현 **
 - **2단계 문서 발견 아키텍처**:
   - 1단계: 모든 문서 요약 생성 + 관련성 평가 (0-100점)
   - 2단계: 선별 문서 내 벡터 검색 + 상세 분석
@@ -1168,7 +1226,7 @@ graph TD
   - ✅ 반복적 품질 개선
   - ❌ 높은 리소스 사용
 
-## 🚀 차세대 성능 최적화
+## 🚀 성능 최적화
 
 ### 💾 **JSON 기반 85% 속도 혁신**
 - **파싱 결과 재사용**: PDF → JSON 1회 변환 후 즉시 로딩
@@ -1184,7 +1242,7 @@ graph TD
 - **성능 모니터링**: 실시간 통계 + 유사도 검색 테스트
 - **안전한 관리**: 다중 선택 + 일괄 작업 + 복구 기능
 
-### 🎨 **UI/UX 차세대 경험**
+### 🎨 **UI/UX 경험**
 - **모듈 분리**: `src/ui/` 폴더별 기능 독립
 - **지연 로딩**: 앱 시작 3배 빠른 초기화
 - **논리적 플로우**: 탭별 독립 작동 + 의존성 해결
@@ -1249,7 +1307,7 @@ graph TD
 - **Modular**: 비교 분석 모드, 체계적 대조 (8.1초)
 - **Web Search**: 최신 정책 실시간 비교 (13.7초)
 
-#### **5. 실시간 정보 질문** - "2024년 최신 AI 트렌드는?" (신규)
+#### **5. 실시간 정보 질문** - "2024년 최신 AI 트렌드는?" 
 - **Naive**: 문서 기반 제한적 답변 (2.8초)
 - **Advanced**: 문서 기반 종합 분석 (5.1초)
 - **Modular**: 문서 기반 고품질 답변 (7.3초)
@@ -1278,31 +1336,31 @@ graph TD
 - 다양한 출처 통합 필요
 - 문서에 없는 정보 검색
 
-#### **🔄 번역 전문 우선**: Translation RAG (신규)
+#### **🔄 번역 전문 우선**: Translation RAG 
 - 영어→한국어 문서 번역
 - 기술 문서 및 학술 논문 번역
 - 대량 문서 일괄 번역
 - 번역 품질 및 일관성 요구
 
-#### **📋 보고서 생성 우선**: Report Generation RAG (신규)
+#### **📋 보고서 생성 우선**: Report Generation RAG 
 - 구조화된 분석 보고서 작성
 - 다중 문서 기반 종합 분석
 - 정책 제안서 및 연구 보고서
 - 전문적 문서 양식 요구
 
-#### **🗂️ 정확한 데이터 우선**: JSON RAG (신규)
+#### **🗂️ 정확한 데이터 우선**: JSON RAG 
 - 구조화된 정보 정확한 조회
 - 실시간 스케줄 및 메뉴 정보
 - 데이터베이스형 질의응답
 - 높은 정확도 요구 시나리오
 
-#### **🔍 문서 발견 우선**: Document Discovery RAG (신규)
+#### **🔍 문서 발견 우선**: Document Discovery RAG 
 - 대량 문서 중 관련 문서 찾기
 - 문서 컬렉션 탐색 및 발견
 - 연구 자료 조사 및 분석
 - 관련성 평가 및 우선순위 필요
 
-### 🔹 **Web Search RAG** - 실시간 정보 최적화형 (신규)
+### 🔹 **Web Search RAG** - 실시간 정보 최적화형 
 ```
 Architecture: [Query] → [Intent Analysis] → [Web Search] → [Content Analysis] → [Expert Answer] → [Final Answer]
 ```
@@ -1373,7 +1431,7 @@ streamlit run app.py --server.runOnSave true
 - 데이터프레임 타입 자동 변환
 - 메타데이터 안전성 검증
 
-#### **6. 웹 검색 RAG 문제 해결 (신규)**
+#### **6. 웹 검색 RAG 문제 해결 **
 ```bash
 # Google 검색 연동 테스트
 python -c "from googlesearch import search; print(list(search('AI 트렌드', num_results=3)))"
@@ -1445,7 +1503,7 @@ tail -f ~/.streamlit/logs/streamlit.log
 ollama logs
 ```
 
-## 🏗️ 차세대 아키텍처 구조
+## 🏗️ 아키텍처 구조
 
 ### 📁 **프로젝트 구조 (모듈 분리)**
 ```
@@ -1477,10 +1535,10 @@ rag/
     │   ├── 🚀 advanced_rag.py          # 고도화 RAG (하이브리드 검색)
     │   ├── 🧩 modular_rag.py           # 모듈형 RAG (Orchestration)
     │   ├── 🌍 web_search_rag.py        # 웹 검색 RAG
-    │   ├── 🔄 translation_rag.py       # 번역 전문 RAG (신규)
-    │   ├── 📋 report_generation_rag.py # 보고서 생성 RAG (신규)
-    │   ├── 🗂️ json_rag.py              # JSON 데이터 RAG (신규)
-    │   └── 🔍 document_discovery_rag.py # 문서 발견 RAG (신규)
+    │   ├── 🔄 translation_rag.py       # 번역 전문 RAG 
+    │   ├── 📋 report_generation_rag.py # 보고서 생성 RAG 
+    │   ├── 🗂️ json_rag.py              # JSON 데이터 RAG 
+    │   └── 🔍 document_discovery_rag.py # 문서 발견 RAG 
     ├── 🎨 ui/                          # UI 모듈 (완전 분리)
     │   ├── __init__.py
     │   ├── 📖 about_ui.py              # 소개 페이지 (359 줄)
@@ -1693,13 +1751,13 @@ graph TD
 - **🔬 확장성**: Orchestration Modules + 플러그인 아키텍처
 
 ### 🚀 **기술 혁신**
-- **차세대 RAG**: Naive → Advanced → Modular 진화
+- **RAG**: Naive → Advanced → Modular 진화
 - **하이브리드 검색**: Vector + BM25 + TF-IDF 통합
 - **지능형 라우팅**: 질문 유형별 최적화 경로
 - **적응형 반복**: 신뢰도 기반 자동 개선
 
 ### 🌟 **비전**
-> **"모든 개발자가 쉽게 접근할 수 있는 차세대 RAG 실험 플랫폼"**
+> **"모든 개발자가 쉽게 접근할 수 있는 RAG 실험 플랫폼"**
 
 RAG 기술의 민주화를 통해 AI 활용의 진입장벽을 낮추고, 
 투명하고 검증 가능한 실험 환경을 제공하여 
