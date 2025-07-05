@@ -47,7 +47,7 @@ class RagasEvaluationUI:
 
     def display(self):
         """Display the RAGAS evaluation page."""
-        st.title("📊 RAGAS 결과 평가")
+        st.title("📊 RAGAS 평가")
         
         st.info(
             "이 페이지에서는 Naive, Advanced, Modular RAG 시스템의 성능을 RAGAS를 사용하여 평가합니다.\n\n"

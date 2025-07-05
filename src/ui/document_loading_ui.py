@@ -50,8 +50,27 @@ class DocumentLoadingUI:
             return
         
         # List available documents
-        pdf_files = list(DOCS_FOLDER.glob("*.pdf"))
-        st.write(f"📚 **사용 가능한 PDF 파일 ({len(pdf_files)}개):**")
+        pdf_files = sorted(list(DOCS_FOLDER.glob("*.pdf")), key=lambda x: x.name.lower())
+        
+        
+        # Display sorting options
+        col1, col2 = st.columns([3, 1])
+        with col1:
+            st.write(f"📚 **사용 가능한 PDF 파일 ({len(pdf_files)}개):** (파일명 순)")
+        with col2:
+            sort_option = st.selectbox(
+                "정렬 기준:",
+                ["파일명 순", "크기 순", "수정일 순"],
+                key="pdf_sort_option"
+            )
+        
+        # Apply sorting based on selection
+        if sort_option == "파일명 순":
+            pdf_files = sorted(pdf_files, key=lambda x: x.name.lower())
+        elif sort_option == "크기 순":
+            pdf_files = sorted(pdf_files, key=lambda x: x.stat().st_size, reverse=True)
+        elif sort_option == "수정일 순":
+            pdf_files = sorted(pdf_files, key=lambda x: x.stat().st_mtime, reverse=True)
         
         if pdf_files:
             # Display PDF files with details and selection
@@ -89,7 +108,7 @@ class DocumentLoadingUI:
             selected_files = [f.name for f in pdf_files]
         else:
             selected_files = st.multiselect(
-                "로딩할 PDF 파일 선택:",
+                "로딩할 PDF 파일 선택: (위에서 선택한 정렬 기준으로 표시)",
                 options=[f.name for f in pdf_files],
                 default=[]
             )
@@ -131,25 +150,42 @@ class DocumentLoadingUI:
             help="**권장**: PDF 같은 다중 페이지 파일의 모든 페이지를 하나로 합친 후 청킹합니다. 페이지 경계 없이 일관된 크기로 분할되어 문서의 논리적 흐름을 유지하는 데 유리합니다. (개별 청크의 페이지 번호는 추적되지 않음)"
         )
         
-        # Generate default filenames based on selected files
-        if len(selected_files) == 1:
-            # Single file
-            file_base = selected_files[0].replace('.pdf', '')
-            default_docs_name = f"documents_{file_base}_{datetime.now().strftime('%Y%m%d_%H%M')}.json"
-            default_chunks_name = f"chunks_{file_base}_{datetime.now().strftime('%Y%m%d_%H%M')}.json"
-        else:
-            # Multiple files
-            default_docs_name = f"documents_{len(selected_files)}files_{datetime.now().strftime('%Y%m%d_%H%M')}.json"
-            default_chunks_name = f"chunks_{len(selected_files)}files_{datetime.now().strftime('%Y%m%d_%H%M')}.json"
+        # Generate default filenames based on selected files (only once per session)
+        selected_files_key = "_".join(sorted(selected_files))  # Create a unique key
+        
+        if f"default_docs_name_{selected_files_key}" not in st.session_state:
+            if len(selected_files) == 1:
+                # Single file
+                file_base = selected_files[0].replace('.pdf', '')
+                default_docs_name = f"documents_{file_base}_{datetime.now().strftime('%Y%m%d_%H%M')}.json"
+                default_chunks_name = f"chunks_{file_base}_{datetime.now().strftime('%Y%m%d_%H%M')}.json"
+            else:
+                # Multiple files
+                default_docs_name = f"documents_{len(selected_files)}files_{datetime.now().strftime('%Y%m%d_%H%M')}.json"
+                default_chunks_name = f"chunks_{len(selected_files)}files_{datetime.now().strftime('%Y%m%d_%H%M')}.json"
+            
+            # Store in session state
+            st.session_state[f"default_docs_name_{selected_files_key}"] = default_docs_name
+            st.session_state[f"default_chunks_name_{selected_files_key}"] = default_chunks_name
+        
+        # Get default names from session state
+        default_docs_name = st.session_state[f"default_docs_name_{selected_files_key}"]
+        default_chunks_name = st.session_state[f"default_chunks_name_{selected_files_key}"]
         
         col1, col2 = st.columns(2)
+        
+        # Initialize variables to avoid UnboundLocalError
+        docs_json_name = None
+        chunks_json_name = None
         
         with col1:
             save_docs_json = st.checkbox("📄 원본 문서를 JSON으로 저장", value=True)
             if save_docs_json:
                 docs_json_name = st.text_input(
                     "원본 JSON 파일명:", 
-                    value=default_docs_name
+                    value=default_docs_name,
+                    key=f"docs_json_name_{selected_files_key}",
+                    help="JSON 파일명을 수정하면 변경 사항이 자동으로 저장됩니다"
                 )
         
         with col2:
@@ -157,7 +193,9 @@ class DocumentLoadingUI:
             if save_chunks_json:
                 chunks_json_name = st.text_input(
                     "청크 JSON 파일명:", 
-                    value=default_chunks_name
+                    value=default_chunks_name,
+                    key=f"chunks_json_name_{selected_files_key}",
+                    help="JSON 파일명을 수정하면 변경 사항이 자동으로 저장됩니다"
                 )
         
         # Load documents button

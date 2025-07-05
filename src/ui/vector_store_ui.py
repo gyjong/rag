@@ -76,7 +76,18 @@ class VectorStoreUI:
         # Vector store type (from sidebar setting)
         vector_store_type = st.session_state.get("vector_store_type", "chroma")
 
-        collection_name_generated = f"vectorstore_{vector_store_type}_{datetime.now().strftime('%Y%m%d_%H%M')}"
+        # Generate default collection name (only once per session)
+        vector_store_key = f"{vector_store_type}_{len(chunks)}chunks"
+        
+        if f"default_collection_name_{vector_store_key}" not in st.session_state:
+            collection_name_generated = f"vectorstore_{vector_store_type}_{datetime.now().strftime('%Y%m%d_%H%M')}"
+            st.session_state[f"default_collection_name_{vector_store_key}"] = collection_name_generated
+        
+        # Get default name from session state
+        collection_name_generated = st.session_state[f"default_collection_name_{vector_store_key}"]
+
+        # Initialize store_name to avoid UnboundLocalError
+        store_name = None
 
         if vector_store_type == "milvus":
             col1, col2 = st.columns(2)
@@ -91,7 +102,9 @@ class VectorStoreUI:
                 if save_vector_store:
                     store_name = st.text_input(
                         "컬렉션 이름:",
-                        value=collection_name_generated
+                        value=collection_name_generated,
+                        key=f"milvus_collection_name_{vector_store_key}",
+                        help="컬렉션 이름을 수정하면 변경 사항이 자동으로 저장됩니다"
                     )
                 else:
                     st.write(f"**컬렉션 이름:** {collection_name_generated}")
@@ -108,7 +121,9 @@ class VectorStoreUI:
                 if save_vector_store:
                     store_name = st.text_input(
                         "벡터 스토어 이름:",
-                        value=collection_name_generated
+                        value=collection_name_generated,
+                        key=f"vector_store_name_{vector_store_key}",
+                        help="벡터 스토어 이름을 수정하면 변경 사항이 자동으로 저장됩니다"
                     )
                 else:
                     store_name = COLLECTION_NAME
