@@ -76,28 +76,62 @@ CONTEXT_COMPRESSION_MAX_LENGTH = 3000 # 컨텍스트 압축 최대 길이 (문�
 
 # Advanced RAG 도메인 키워드 맵 (쿼리 확장 및 컨텍스트 압축에 사용)
 ADVANCED_RAG_DOMAIN_KEYWORD_MAP = {
-    "AI": (["ai", "인공지능", "artificial intelligence", "머신러닝", "machine learning"],
-           ["딥러닝", "deep learning", "neural network", "신경망", "자동화", "automation", "알고리즘", "algorithm", "데이터 분석", "data analysis", "예측 모델", "predictive modeling"]),
-    "Business": (["업무", "work", "직장", "business", "비즈니스", "회사"],
-                 ["생산성", "productivity", "효율성", "efficiency", "업무 프로세스", "work process", "자동화", "automation", "디지털 전환", "digital transformation", "혁신", "innovation"]),
-    "Trend": (["트렌드", "trend", "동향", "전망", "미래", "future"],
-              ["시장 동향", "market trend", "기술 동향", "technology trend", "발전 방향", "development direction", "변화", "change", "혁신", "innovation", "진화", "evolution"]),
-    "Industry": (["산업", "industry", "시장", "market", "기업", "company"],
-                 ["시장 분석", "market analysis", "경쟁", "competition", "성장", "growth", "투자", "investment", "전략", "strategy"]),
-    "Analysis": (["분석", "analysis", "연구", "research", "조사", "survey"],
-                 ["데이터 분석", "data analysis", "통계", "statistics", "조사 결과", "survey results", "연구 보고서", "research report"]),
-    "Strategy": (["도입", "implementation", "전략", "strategy", "방안", "plan"],
-                 ["실행 계획", "execution plan", "로드맵", "roadmap", "단계별 접근", "step-by-step approach", "성공 사례", "success case"]),
-    "Performance": (["성능", "performance", "품질", "quality", "효율성", "efficiency"],
-                    ["최적화", "optimization", "개선", "improvement", "측정", "measurement", "평가", "evaluation", "벤치마크", "benchmark"]),
-    "Impact": (["영향", "impact", "효과", "effect", "변화", "change"],
-               ["결과", "result", "성과", "outcome", "개선 효과", "improvement effect", "변화 분석", "change analysis", "영향 평가", "impact assessment"]),
-    "Tech App": (["자동화", "automation", "디지털화", "digitalization", "혁신", "innovation"],
-                 ["스마트 팩토리", "smart factory", "IoT", "인터넷 of things", "클라우드", "cloud", "빅데이터", "big data", "블록체인", "blockchain"]),
-    "Temporal": (["현재", "current", "미래", "future", "과거", "past", "비교", "compare"],
-                 ["시계열 분석", "time series analysis", "트렌드 비교", "trend comparison", "변화 추이", "change trend", "예측", "prediction", "전망", "outlook"]),
-    "Legal": (["법", "law", "규제", "regulation", "정책", "policy", "제도", "system"],
-              ["법률", "legal", "규정", "rule", "조항", "clause", "시행", "enforcement", "적용", "application", "준수", "compliance"])
+    "AI": (["ai", "인공지능", "artificial intelligence", "머신러닝", "machine learning", "딥러닝", "deep learning"],
+           ["생성형 AI", "generative ai", "신경망", "neural network", "자동화", "automation", "알고리즘", "algorithm", "데이터 분석", "data analysis", "예측 모델", "predictive modeling", "chatgpt", "claude", "llm", "대화형", "conversational", "지능형", "intelligent"]),
+    
+    "Business": (["업무", "work", "직장", "business", "비즈니스", "회사", "기업", "조직"],
+                 ["생산성", "productivity", "효율성", "efficiency", "업무 프로세스", "work process", "디지털 전환", "digital transformation", "혁신", "innovation", "경영", "management", "운영", "operation", "서비스", "service", "고객", "customer"]),
+    
+    "Manufacturing": (["제조", "manufacturing", "생산", "production", "공장", "factory", "자율제조", "autonomous manufacturing"],
+                      ["스마트 팩토리", "smart factory", "스마트 제조", "smart manufacturing", "공정", "process", "품질관리", "quality control", "생산성", "productivity", "자동화", "automation", "로봇", "robot", "설비", "equipment", "라인", "line"]),
+    
+    "Government": (["정부", "government", "국가", "nation", "공공", "public", "행정", "administration", "부처", "ministry"],
+                   ["정부기관", "government agency", "행정기관", "administrative agency", "공공기관", "public agency", "중앙정부", "central government", "지방정부", "local government", "부처", "ministry", "청", "office", "위원회", "committee", "기관", "agency", "공무원", "civil servant", "행정서비스", "administrative service", "공공서비스", "public service", "정부지원", "government support", "공공투자", "public investment", "행정절차", "administrative procedure", "공공예산", "public budget"]),
+    
+    "Economics": (["경제", "economy", "경제성", "economics", "금융", "finance", "투자", "investment", "자금", "funding"],
+                  ["경제성장", "economic growth", "시장경제", "market economy", "경쟁력", "competitiveness", "수익성", "profitability", "비용", "cost", "예산", "budget", "재정", "fiscal", "투자유치", "investment attraction"]),
+    
+    "Education": (["교육", "education", "학습", "learning", "훈련", "training", "인재", "talent", "역량", "capability"],
+                  ["인재양성", "talent development", "교육과정", "curriculum", "스킬", "skill", "역량강화", "capacity building", "전문성", "expertise", "지식", "knowledge", "학습모델", "learning model", "교육프로그램", "education program"]),
+    
+    "Global": (["국제", "international", "글로벌", "global", "해외", "overseas", "세계", "world", "협력", "cooperation"],
+               ["국제협력", "international cooperation", "글로벌 트렌드", "global trend", "해외진출", "overseas expansion", "국제경쟁", "international competition", "글로벌 표준", "global standard", "세계시장", "global market", "국가간", "inter-country"]),
+    
+    "Data": (["데이터", "data", "정보", "information", "지식", "knowledge", "db", "database", "빅데이터", "big data"],
+             ["데이터베이스", "database", "정보화", "informatization", "지식관리", "knowledge management", "데이터 처리", "data processing", "정보시스템", "information system", "데이터 활용", "data utilization", "데이터 분석", "data analytics"]),
+    
+    "Security": (["보안", "security", "안전", "safety", "위험", "risk", "보호", "protection", "신뢰", "trust"],
+                 ["사이버보안", "cybersecurity", "정보보안", "information security", "안전성", "safety", "신뢰성", "reliability", "위험관리", "risk management", "보안체계", "security system", "데이터 보호", "data protection"]),
+    
+    "Trend": (["트렌드", "trend", "동향", "전망", "미래", "future", "변화", "change", "패러다임", "paradigm"],
+              ["시장 동향", "market trend", "기술 동향", "technology trend", "발전 방향", "development direction", "혁신", "innovation", "진화", "evolution", "패러다임 변화", "paradigm shift", "미래예측", "future forecast"]),
+    
+    "Industry": (["산업", "industry", "시장", "market", "분야", "field", "영역", "domain", "섹터", "sector"],
+                 ["산업계", "industrial sector", "시장 분석", "market analysis", "경쟁", "competition", "성장", "growth", "전략", "strategy", "산업정책", "industrial policy", "생태계", "ecosystem", "밸류체인", "value chain"]),
+    
+    "Analysis": (["분석", "analysis", "연구", "research", "조사", "survey", "평가", "evaluation", "검토", "review"],
+                 ["데이터 분석", "data analysis", "통계", "statistics", "조사 결과", "survey results", "연구 보고서", "research report", "실증분석", "empirical analysis", "정량분석", "quantitative analysis", "정성분석", "qualitative analysis"]),
+    
+    "Strategy": (["전략", "strategy", "방안", "plan", "계획", "planning", "도입", "implementation", "추진", "promotion"],
+                 ["전략계획", "strategic planning", "실행 계획", "execution plan", "로드맵", "roadmap", "단계별 접근", "step-by-step approach", "성공 사례", "success case", "추진방안", "implementation plan", "정책수단", "policy instrument"]),
+    
+    "Performance": (["성능", "performance", "품질", "quality", "효율성", "efficiency", "효과성", "effectiveness", "생산성", "productivity"],
+                    ["최적화", "optimization", "개선", "improvement", "측정", "measurement", "평가", "evaluation", "벤치마크", "benchmark", "성과", "achievement", "지표", "indicator", "KPI"]),
+    
+    "Impact": (["영향", "impact", "효과", "effect", "파급효과", "ripple effect", "변화", "change", "결과", "result"],
+               ["성과", "outcome", "개선 효과", "improvement effect", "변화 분석", "change analysis", "영향 평가", "impact assessment", "사회적 영향", "social impact", "경제적 효과", "economic effect"]),
+    
+    "Technology": (["기술", "technology", "테크", "tech", "솔루션", "solution", "플랫폼", "platform", "시스템", "system"],
+                   ["첨단기술", "advanced technology", "핵심기술", "core technology", "기술개발", "technology development", "기술혁신", "technology innovation", "디지털", "digital", "ICT", "클라우드", "cloud", "IoT", "블록체인", "blockchain"]),
+    
+    "Temporal": (["현재", "current", "미래", "future", "과거", "past", "비교", "compare", "시기", "timing", "기간", "period"],
+                 ["시계열 분석", "time series analysis", "트렌드 비교", "trend comparison", "변화 추이", "change trend", "예측", "prediction", "전망", "outlook", "장기", "long-term", "단기", "short-term", "중장기", "mid to long-term"]),
+    
+    "Legal": (["법", "law", "규제", "regulation", "정책", "policy", "제도", "system", "법률", "legal", "규정", "rule"],
+              ["법령", "legislation", "조항", "clause", "시행", "enforcement", "적용", "application", "준수", "compliance", "규제체계", "regulatory framework", "법적근거", "legal basis", "제도개선", "institutional improvement"]),
+
+    "Policy": (["정책", "policy", "정책방향", "policy direction", "국가전략", "national strategy", "공공정책", "public policy", "거버넌스", "governance"],
+               ["정책수립", "policy making", "정책결정", "policy decision", "정책실행", "policy implementation", "정책평가", "policy evaluation", "정책개선", "policy improvement", "정책변화", "policy change", "정책효과", "policy effect", "정책목표", "policy objective", "정책수단", "policy instrument", "정책과제", "policy task", "정책의제", "policy agenda", "정책우선순위", "policy priority", "정책연구", "policy research", "정책개발", "policy development", "정책혁신", "policy innovation"]),
 }
 
 # TF-IDF 불용어 설정
