@@ -9,6 +9,7 @@ from enum import Enum
 
 from ..utils.vector_store import VectorStoreManager
 from ..utils.llm_manager import LLMManager
+from ..config.settings import CONFIDENCE_THRESHOLD
 
 logger = logging.getLogger(__name__)
 
@@ -318,7 +319,7 @@ def check_iteration_stop(confidence: float, iteration: int, max_iterations: int)
     Stops if confidence is high OR if the number of completed iterations reaches max_iterations - 1.
     """
     # iteration is 0-indexed (0 means 1st iteration completed)
-    return confidence >= 0.7 or iteration >= max_iterations - 1
+    return confidence >= CONFIDENCE_THRESHOLD or iteration >= max_iterations - 1
 
 # --- System Info ---
 def get_modular_rag_system_info() -> Dict[str, Any]:

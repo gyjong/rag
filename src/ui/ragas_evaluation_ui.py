@@ -14,7 +14,9 @@ from ..config.settings import (
     RAGAS_TIMEOUT,
     RAGAS_BATCH_SIZE,
     RAGAS_AVAILABLE_MODELS,
-    RAGAS_RESULTS_DIR
+    RAGAS_RESULTS_DIR,
+    MAX_ITERATIONS,
+    RERANK_TOP_K
 )
 from ..graphs.naive_rag_graph import create_naive_rag_graph
 from ..graphs.advanced_rag_graph import create_advanced_rag_graph
@@ -242,9 +244,9 @@ class RagasEvaluationUI:
                         if model_name == "Naive RAG":
                             inputs["k"] = 5
                         elif model_name == "Advanced RAG":
-                            inputs.update({"k": 10, "rerank_top_k": 5})
+                            inputs.update({"k": 10, "rerank_top_k": RERANK_TOP_K})
                         elif model_name == "Modular RAG":
-                            inputs["max_iterations"] = 2
+                            inputs["max_iterations"] = MAX_ITERATIONS
                         
                         response = graph.invoke(inputs, config={"callbacks": [langfuse_handler]})
                         

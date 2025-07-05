@@ -5,6 +5,7 @@ import time
 from typing import Dict, Any, Optional, List
 
 from ..config import *
+from ..config.settings import MAX_ITERATIONS, RERANK_TOP_K
 from ..utils.llm_manager import LLMManager
 from ..utils.vector_store import VectorStoreManager
 from ..rag_systems.naive_rag import get_naive_rag_system_info
@@ -395,7 +396,7 @@ class RAGExperimentUI:
                         llm_manager = LLMManager(selected_model, OLLAMA_BASE_URL, temperature=llm_temperature)
                         vector_store_manager = st.session_state.vector_store_manager
 
-                        result = RAGExperimentUI._run_advanced_rag(query, retrieval_k * 2, retrieval_k, llm_manager, vector_store_manager)
+                        result = RAGExperimentUI._run_advanced_rag(query, retrieval_k * 2, RERANK_TOP_K, llm_manager, vector_store_manager)
                         
                     elif system_name == "Modular RAG":
                         if "bm25_index" not in st.session_state or "bm25_documents" not in st.session_state:
@@ -410,7 +411,7 @@ class RAGExperimentUI:
                         bm25_documents = st.session_state.bm25_documents
 
                         result = RAGExperimentUI._run_modular_rag(
-                            query, 2, llm_manager, vector_store_manager, bm25_index, bm25_documents
+                            query, MAX_ITERATIONS, llm_manager, vector_store_manager, bm25_index, bm25_documents
                         )
                     else:
                         # Fallback for any other system that might still use the old class structure

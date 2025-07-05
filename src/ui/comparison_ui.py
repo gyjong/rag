@@ -10,6 +10,7 @@ import time
 from ..rag_systems.advanced_rag import get_advanced_rag_system_info
 from ..rag_systems.modular_rag import get_modular_rag_system_info
 from ..rag_systems.naive_rag import get_naive_rag_system_info
+from ..config.settings import CONFIDENCE_THRESHOLD
 
 
 class ComparisonUI:
@@ -392,7 +393,7 @@ class ComparisonUI:
                 "🔧 필터링 & 다양성",
                 "🤖 유형별 맞춤 생성",
                 "📊 신뢰도 평가",
-                "🔄 반복 제어<br/>(신뢰도 < 0.7시 재시도)",
+                f"🔄 반복 제어<br/>(신뢰도 < {CONFIDENCE_THRESHOLD}시 재시도)",
                 "✅ 최종 답변"
             ]
             description = "모듈형 아키텍처: 질문 유형별 최적화 + 반복적 개선"
@@ -600,7 +601,7 @@ class ComparisonUI:
             }
             
             # Check for special features
-            if metadata.get("final_confidence", 0) > 0.7:
+            if metadata.get("final_confidence", 0) > CONFIDENCE_THRESHOLD:
                 analysis["특수기능"].append("🎯 고신뢰도")
             if metadata.get("iterations", 1) > 1:
                 analysis["특수기능"].append("🔄 반복개선")

@@ -3,6 +3,8 @@
 import streamlit as st
 from typing import Dict, Any
 
+from ..config.settings import CONFIDENCE_THRESHOLD
+
 
 class AboutUI:
     """UI components for about and documentation sections."""
@@ -124,7 +126,7 @@ class AboutUI:
 
                 ### 🔄 **Orchestration Modules**
                 - **🛤️ Routing**: 질문 유형별 최적 처리 경로 선택
-                - **🔄 Iteration Control**: 신뢰도 기반 반복 개선 (< 0.7시 재시도)
+                - **🔄 Iteration Control**: 신뢰도 기반 반복 개선 (< {CONFIDENCE_THRESHOLD}시 재시도)
                 """)
             with col2:
                 st.warning("**🎯 정밀 최적화**\n\n복잡한 질문과 \n높은 정확성이 \n요구되는 고급 용도")
@@ -151,7 +153,7 @@ class AboutUI:
         - **토큰 효율성**: 최대 50% 압축률로 비용 절감
 
         ### 🔄 **반복적 개선 (Modular)**
-        - **신뢰도 임계값**: 0.7 미만시 자동 재시도
+                        - **신뢰도 임계값**: {CONFIDENCE_THRESHOLD} 미만시 자동 재시도
         - **매개변수 조정**: 검색 범위 동적 확대 (k → k+2)
         - **최대 반복 제한**: 무한 루프 방지
 

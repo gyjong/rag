@@ -10,6 +10,7 @@ import numpy as np
 
 from ..utils.vector_store import VectorStoreManager
 from ..utils.llm_manager import LLMManager
+from ..config.settings import QUERY_EXPANSION_COUNT
 
 logger = logging.getLogger(__name__)
 
@@ -68,7 +69,7 @@ def preprocess_query(query: str) -> Dict[str, Any]:
     if question_marks > 1: base_expansion += 2
     if word_count > 15: base_expansion += 1
         
-    max_terms = max(3, min(base_expansion, 8))
+    max_terms = max(3, min(base_expansion, QUERY_EXPANSION_COUNT))
     selected_terms = unique_terms[:max_terms]
     
     enhanced_query = f"{cleaned_query} {' '.join(selected_terms)}" if selected_terms else cleaned_query
