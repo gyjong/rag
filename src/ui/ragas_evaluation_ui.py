@@ -473,8 +473,11 @@ class RagasEvaluationUI:
         metrics = ["Faithfulness", "Answer Relevancy", "Context Recall", "Context Precision"]
         colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FECA57']
         
+        # 모든 값들을 수집하여 반지름 축 범위 계산
+        all_values = []
         for i, model in enumerate(summary_df["Model"]):
             values = [summary_df.loc[i, metric] for metric in metrics]
+            all_values.extend(values)
             values.append(values[0])  # 차트를 닫기 위해 첫 번째 값 추가
             
             fig.add_trace(go.Scatterpolar(
@@ -487,17 +490,40 @@ class RagasEvaluationUI:
                 opacity=0.3
             ))
         
+        # 반지름 축 범위를 데이터에 맞게 자동 조정
+        if all_values:
+            min_val = min(all_values)
+            max_val = max(all_values)
+            
+            # 데이터 범위가 너무 좁으면 기본 범위 사용
+            if max_val - min_val < 0.05:
+                r_min = max(0, min_val - 0.05)
+                r_max = min(1, max_val + 0.05)
+            else:
+                # 여백을 추가하되 0~1 범위를 벗어나지 않게 조정
+                margin = (max_val - min_val) * 0.1
+                r_min = max(0, min_val - margin)
+                r_max = min(1, max_val + margin)
+            
+            radar_range = [r_min, r_max]
+        else:
+            radar_range = [0, 1]  # 기본값
+        
         fig.update_layout(
             polar=dict(
                 radialaxis=dict(
                     visible=True,
-                    range=[0, 1]
+                    range=radar_range,
+                    tickformat=".3f"  # 소수점 3자리까지 표시
                 )
             ),
             showlegend=True,
             title="RAG 모델 성능 레이더 차트",
             height=500
         )
+        
+        # 반지름 축 범위 정보를 표시
+        st.caption(f"📊 **반지름 축 범위**: {radar_range[0]:.3f} ~ {radar_range[1]:.3f} (데이터에 맞게 자동 조정됨)")
         
         st.plotly_chart(fig, use_container_width=True)
 
@@ -523,6 +549,26 @@ class RagasEvaluationUI:
                 value_name="Score"
             )
             
+            # y축 범위를 선택된 메트릭의 데이터에 맞게 자동 조정
+            scores = melted_df["Score"].values
+            if len(scores) > 0:
+                min_val = min(scores)
+                max_val = max(scores)
+                
+                # 데이터 범위가 너무 좁으면 기본 범위 사용
+                if max_val - min_val < 0.05:
+                    y_min = max(0, min_val - 0.05)
+                    y_max = min(1, max_val + 0.05)
+                else:
+                    # 여백을 추가하되 0~1 범위를 벗어나지 않게 조정
+                    margin = (max_val - min_val) * 0.1
+                    y_min = max(0, min_val - margin)
+                    y_max = min(1, max_val + margin)
+                
+                y_range = [y_min, y_max]
+            else:
+                y_range = [0, 1]  # 기본값
+            
             fig = px.bar(
                 melted_df,
                 x="Model",
@@ -537,8 +583,14 @@ class RagasEvaluationUI:
                 height=500,
                 xaxis_title="RAG 모델",
                 yaxis_title="점수",
-                yaxis=dict(range=[0, 1])
+                yaxis=dict(
+                    range=y_range,
+                    tickformat=".3f"  # 소수점 3자리까지 표시
+                )
             )
+            
+            # y축 범위 정보를 표시
+            st.caption(f"📊 **y축 범위**: {y_range[0]:.3f} ~ {y_range[1]:.3f} (선택된 메트릭 데이터에 맞게 자동 조정됨)")
             
             st.plotly_chart(fig, use_container_width=True)
 
@@ -581,8 +633,11 @@ class RagasEvaluationUI:
         fig = go.Figure()
         colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4']
         
+        # 모든 값들을 수집하여 y축 범위 계산
+        all_values = []
         for i, model in enumerate(summary_df["Model"]):
             values = [summary_df.loc[i, metric] for metric in metrics]
+            all_values.extend(values)
             
             fig.add_trace(go.Scatter(
                 x=metrics,
@@ -593,13 +648,38 @@ class RagasEvaluationUI:
                 marker=dict(size=8)
             ))
         
+        # y축 범위를 데이터에 맞게 자동 조정
+        if all_values:
+            min_val = min(all_values)
+            max_val = max(all_values)
+            
+            # 데이터 범위가 너무 좁으면 기본 범위 사용
+            if max_val - min_val < 0.05:
+                y_min = max(0, min_val - 0.05)
+                y_max = min(1, max_val + 0.05)
+            else:
+                # 여백을 추가하되 0~1 범위를 벗어나지 않게 조정
+                margin = (max_val - min_val) * 0.1
+                y_min = max(0, min_val - margin)
+                y_max = min(1, max_val + margin)
+            
+            y_range = [y_min, y_max]
+        else:
+            y_range = [0, 1]  # 기본값
+        
         fig.update_layout(
             title="메트릭별 성능 트렌드",
             xaxis_title="평가 메트릭",
             yaxis_title="점수",
             height=400,
-            yaxis=dict(range=[0, 1])
+            yaxis=dict(
+                range=y_range,
+                tickformat=".3f"  # 소수점 3자리까지 표시하여 미세한 차이도 확인 가능
+            )
         )
+        
+        # y축 범위 정보를 표시
+        st.caption(f"📊 **y축 범위**: {y_range[0]:.3f} ~ {y_range[1]:.3f} (데이터에 맞게 자동 조정됨)")
         
         st.plotly_chart(fig, use_container_width=True)
 
