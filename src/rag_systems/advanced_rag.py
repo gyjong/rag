@@ -4,15 +4,25 @@ import logging
 from typing import List, Dict, Any, Iterator, Tuple
 import re
 from langchain_core.documents import Document
-from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.feature_extraction.text import TfidfVectorizer, ENGLISH_STOP_WORDS
 from sklearn.metrics.pairwise import cosine_similarity
 import numpy as np
 
 from ..utils.vector_store import VectorStoreManager
 from ..utils.llm_manager import LLMManager
-from ..config.settings import QUERY_EXPANSION_COUNT
+from ..config.settings import QUERY_EXPANSION_COUNT, CONTEXT_COMPRESSION_MAX_LENGTH, ADVANCED_RAG_DOMAIN_KEYWORD_MAP, KOREAN_STOP_WORDS
 
 logger = logging.getLogger(__name__)
+
+def _get_combined_stop_words() -> List[str]:
+    """Get combined English and Korean stop words.
+    
+    Returns:
+        List of combined stop words
+    """
+    # Combine English and Korean stop words
+    combined_stop_words = list(ENGLISH_STOP_WORDS) + KOREAN_STOP_WORDS
+    return combined_stop_words
 
 def preprocess_query(query: str) -> Dict[str, Any]:
     """Preprocess and optimize the query with comprehensive expansion and enhancement.
@@ -28,39 +38,16 @@ def preprocess_query(query: str) -> Dict[str, Any]:
     # Comprehensive query expansion with multiple strategies
     expanded_terms = []
     
-    # Domain-specific keyword expansions
-    domain_keyword_map = {
-        "AI": (["ai", "인공지능", "artificial intelligence", "머신러닝", "machine learning"],
-               ["딥러닝", "deep learning", "neural network", "신경망", "자동화", "automation", "알고리즘", "algorithm", "데이터 분석", "data analysis", "예측 모델", "predictive modeling"]),
-        "Business": (["업무", "work", "직장", "business", "비즈니스", "회사"],
-                     ["생산성", "productivity", "효율성", "efficiency", "업무 프로세스", "work process", "자동화", "automation", "디지털 전환", "digital transformation", "혁신", "innovation"]),
-        "Trend": (["트렌드", "trend", "동향", "전망", "미래", "future"],
-                  ["시장 동향", "market trend", "기술 동향", "technology trend", "발전 방향", "development direction", "변화", "change", "혁신", "innovation", "진화", "evolution"]),
-        "Industry": (["산업", "industry", "시장", "market", "기업", "company"],
-                     ["시장 분석", "market analysis", "경쟁", "competition", "성장", "growth", "투자", "investment", "전략", "strategy"]),
-        "Analysis": (["분석", "analysis", "연구", "research", "조사", "survey"],
-                     ["데이터 분석", "data analysis", "통계", "statistics", "조사 결과", "survey results", "연구 보고서", "research report"]),
-        "Strategy": (["도입", "implementation", "전략", "strategy", "방안", "plan"],
-                     ["실행 계획", "execution plan", "로드맵", "roadmap", "단계별 접근", "step-by-step approach", "성공 사례", "success case"]),
-        "Performance": (["성능", "performance", "품질", "quality", "효율성", "efficiency"],
-                        ["최적화", "optimization", "개선", "improvement", "측정", "measurement", "평가", "evaluation", "벤치마크", "benchmark"]),
-        "Impact": (["영향", "impact", "효과", "effect", "변화", "change"],
-                   ["결과", "result", "성과", "outcome", "개선 효과", "improvement effect", "변화 분석", "change analysis", "영향 평가", "impact assessment"]),
-        "Tech App": (["자동화", "automation", "디지털화", "digitalization", "혁신", "innovation"],
-                     ["스마트 팩토리", "smart factory", "IoT", "인터넷 of things", "클라우드", "cloud", "빅데이터", "big data", "블록체인", "blockchain"]),
-        "Temporal": (["현재", "current", "미래", "future", "과거", "past", "비교", "compare"],
-                     ["시계열 분석", "time series analysis", "트렌드 비교", "trend comparison", "변화 추이", "change trend", "예측", "prediction", "전망", "outlook"])
-    }
-
+    # Use centralized domain keyword map from settings
     query_lower = cleaned_query.lower()
-    for _, (triggers, terms) in domain_keyword_map.items():
+    for _, (triggers, terms) in ADVANCED_RAG_DOMAIN_KEYWORD_MAP.items():
         if any(keyword.lower() in query_lower for keyword in triggers):
             expanded_terms.extend(terms)
 
     unique_terms = list(dict.fromkeys(expanded_terms))
 
     # Dynamic expansion based on query complexity
-    matched_domains = sum(1 for _, (keywords, _) in domain_keyword_map.items() if any(k in query_lower for k in keywords))
+    matched_domains = sum(1 for _, (keywords, _) in ADVANCED_RAG_DOMAIN_KEYWORD_MAP.items() if any(k in query_lower for k in keywords))
     
     question_marks = query.count('?') + query.count('？')
     word_count = len(cleaned_query.split())
@@ -127,7 +114,9 @@ def rerank_documents(query: str, docs_with_scores: List[Tuple[Document, float]],
     texts_with_query = texts + [query]
     
     try:
-        vectorizer = TfidfVectorizer(stop_words='english', max_features=1000)
+        # Use combined English and Korean stop words for better multilingual support
+        combined_stop_words = _get_combined_stop_words()
+        vectorizer = TfidfVectorizer(stop_words=combined_stop_words, max_features=1000)
         tfidf_matrix = vectorizer.fit_transform(texts_with_query)
         
         query_vector = tfidf_matrix[-1]
@@ -150,11 +139,83 @@ def rerank_documents(query: str, docs_with_scores: List[Tuple[Document, float]],
         logger.warning(f"Reranking failed, returning original order: {e}", exc_info=True)
         return [doc for doc, _ in docs_with_scores[:top_k]]
 
-def compress_context(docs: List[Document], max_length: int = 3000) -> Dict[str, Any]:
-    """Compress context by selecting most relevant sentences.
+def _extract_relevant_keywords(query: str) -> Dict[str, List[str]]:
+    """Extract relevant keywords from query using domain keyword mapping.
+    
+    Args:
+        query: User query
+        
+    Returns:
+        Dictionary with matched domains and their keywords
+    """
+    # Use centralized domain keyword map from settings
+    query_lower = query.lower()
+    matched_keywords = {}
+    
+    for domain, (triggers, expansion_terms) in ADVANCED_RAG_DOMAIN_KEYWORD_MAP.items():
+        if any(keyword.lower() in query_lower for keyword in triggers):
+            # Increase expansion for compression context (more keywords for better matching)
+            max_terms = min(len(expansion_terms), QUERY_EXPANSION_COUNT * 2)  # Double the expansion
+            matched_keywords[domain] = expansion_terms[:max_terms]
+    
+    return matched_keywords
+
+def _calculate_keyword_boost(sentence_lower: str, relevant_keywords: Dict[str, List[str]]) -> float:
+    """Calculate keyword boost score for a sentence.
+    
+    Args:
+        sentence_lower: Sentence in lowercase
+        relevant_keywords: Dictionary of domain keywords
+        
+    Returns:
+        Boost multiplier for the sentence score
+    """
+    if not relevant_keywords:
+        return 1.0  # No boost if no relevant keywords
+    
+    boost = 1.0
+    total_matches = 0
+    total_keywords = sum(len(keywords) for keywords in relevant_keywords.values())
+    
+    # Count keyword matches across all domains
+    for domain, keywords in relevant_keywords.items():
+        domain_matches = sum(1 for keyword in keywords if keyword.lower() in sentence_lower)
+        total_matches += domain_matches
+        
+        # Domain-specific boost weights
+        domain_weights = {
+            "AI": 1.8,
+            "Legal": 1.7,
+            "Business": 1.5,
+            "Industry": 1.5,
+            "Strategy": 1.4,
+            "Trend": 1.4,
+            "Performance": 1.3,
+            "Analysis": 1.3,
+            "Impact": 1.2,
+            "Tech App": 1.2,
+            "Temporal": 1.1
+        }
+        
+        if domain_matches > 0:
+            domain_boost = domain_weights.get(domain, 1.2)
+            boost *= domain_boost ** min(domain_matches / len(keywords), 0.5)  # Cap the exponential growth
+    
+    # Additional boost based on match density
+    if total_keywords > 0:
+        match_ratio = total_matches / total_keywords
+        density_boost = 1.0 + (match_ratio * 0.5)  # Up to 1.5x boost for high density
+        boost *= density_boost
+    
+    # Cap maximum boost to prevent extreme values
+    return min(boost, 3.0)
+
+def compress_context(docs: List[Document], query: str = "", max_length: int = CONTEXT_COMPRESSION_MAX_LENGTH) -> Dict[str, Any]:
+    """Compress context by selecting most relevant sentences using dynamic keyword extraction.
     
     Args:
         docs: List of documents
+        query: Original query to extract relevant keywords
         max_length: Maximum context length
         
     Returns:
@@ -168,16 +229,31 @@ def compress_context(docs: List[Document], max_length: int = 3000) -> Dict[str, 
     
     if original_length <= max_length:
         return {"compressed_context": full_context, "compression_ratio": 1.0}
-            
+    
+    # Extract relevant keywords from query using domain_keyword_map
+    relevant_keywords = _extract_relevant_keywords(query)
+    
+    # Log detected keywords for debugging
+    if relevant_keywords and query:
+        logger.info(f"🔍 Compression Keywords Detected:")
+        for domain, keywords in relevant_keywords.items():
+            logger.info(f"   ├─ {domain}: {keywords[:5]}{'...' if len(keywords) > 5 else ''}")
+        logger.info(f"   └─ Total keywords: {sum(len(kw) for kw in relevant_keywords.values())}")
+    elif query:
+        logger.info(f"🔍 No domain keywords detected in query: '{query}'")
+    
     sentences = re.split(r'(?<=[.!?])\s+', full_context)
     
     scored_sentences = []
     for sentence in sentences:
         if len(sentence.strip()) < 20: continue
             
-        score = len(sentence) * 0.1
-        if any(keyword in sentence.lower() for keyword in ['ai', '인공지능', '트렌드', '미래', '업무']):
-            score *= 1.5
+        score = len(sentence) * 0.1  # Base score from length
+        
+        # Dynamic keyword scoring based on query context
+        keyword_boost = _calculate_keyword_boost(sentence.lower(), relevant_keywords)
+        score *= keyword_boost
+        
         scored_sentences.append((sentence.strip(), score))
     
     scored_sentences.sort(key=lambda x: x[1], reverse=True)

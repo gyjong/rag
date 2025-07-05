@@ -66,8 +66,72 @@ DEFAULT_K = 5
 SIMILARITY_THRESHOLD = 0.7
 
 # ====== Advanced RAG 설정 ======
-RERANK_TOP_K = 3
-QUERY_EXPANSION_COUNT = 5
+RERANK_TOP_K = 3                      # 재순위화 후 선택할 상위 문서 수
+QUERY_EXPANSION_COUNT = 5             # 쿼리 확장 시 추가할 키워드 수
+CONTEXT_COMPRESSION_MAX_LENGTH = 3000 # 컨텍스트 압축 최대 길이 (문자 수)
+                                      # 이 값이 3000인 이유:
+                                      # - LLM 컨텍스트 윈도우 크기 고려 (대략 500-800 토큰)
+                                      # - 성능과 정확도의 균형
+                                      # - 메모리 효율성 및 응답 시간 최적화
+
+# Advanced RAG 도메인 키워드 맵 (쿼리 확장 및 컨텍스트 압축에 사용)
+ADVANCED_RAG_DOMAIN_KEYWORD_MAP = {
+    "AI": (["ai", "인공지능", "artificial intelligence", "머신러닝", "machine learning"],
+           ["딥러닝", "deep learning", "neural network", "신경망", "자동화", "automation", "알고리즘", "algorithm", "데이터 분석", "data analysis", "예측 모델", "predictive modeling"]),
+    "Business": (["업무", "work", "직장", "business", "비즈니스", "회사"],
+                 ["생산성", "productivity", "효율성", "efficiency", "업무 프로세스", "work process", "자동화", "automation", "디지털 전환", "digital transformation", "혁신", "innovation"]),
+    "Trend": (["트렌드", "trend", "동향", "전망", "미래", "future"],
+              ["시장 동향", "market trend", "기술 동향", "technology trend", "발전 방향", "development direction", "변화", "change", "혁신", "innovation", "진화", "evolution"]),
+    "Industry": (["산업", "industry", "시장", "market", "기업", "company"],
+                 ["시장 분석", "market analysis", "경쟁", "competition", "성장", "growth", "투자", "investment", "전략", "strategy"]),
+    "Analysis": (["분석", "analysis", "연구", "research", "조사", "survey"],
+                 ["데이터 분석", "data analysis", "통계", "statistics", "조사 결과", "survey results", "연구 보고서", "research report"]),
+    "Strategy": (["도입", "implementation", "전략", "strategy", "방안", "plan"],
+                 ["실행 계획", "execution plan", "로드맵", "roadmap", "단계별 접근", "step-by-step approach", "성공 사례", "success case"]),
+    "Performance": (["성능", "performance", "품질", "quality", "효율성", "efficiency"],
+                    ["최적화", "optimization", "개선", "improvement", "측정", "measurement", "평가", "evaluation", "벤치마크", "benchmark"]),
+    "Impact": (["영향", "impact", "효과", "effect", "변화", "change"],
+               ["결과", "result", "성과", "outcome", "개선 효과", "improvement effect", "변화 분석", "change analysis", "영향 평가", "impact assessment"]),
+    "Tech App": (["자동화", "automation", "디지털화", "digitalization", "혁신", "innovation"],
+                 ["스마트 팩토리", "smart factory", "IoT", "인터넷 of things", "클라우드", "cloud", "빅데이터", "big data", "블록체인", "blockchain"]),
+    "Temporal": (["현재", "current", "미래", "future", "과거", "past", "비교", "compare"],
+                 ["시계열 분석", "time series analysis", "트렌드 비교", "trend comparison", "변화 추이", "change trend", "예측", "prediction", "전망", "outlook"]),
+    "Legal": (["법", "law", "규제", "regulation", "정책", "policy", "제도", "system"],
+              ["법률", "legal", "규정", "rule", "조항", "clause", "시행", "enforcement", "적용", "application", "준수", "compliance"])
+}
+
+# TF-IDF 불용어 설정
+KOREAN_STOP_WORDS = [
+    # 조사
+    '은', '는', '이', '가', '을', '를', '에', '의', '와', '과', '으로', '로', '에서', '에게', '한테', 
+    '부터', '까지', '만', '도', '라도', '조차', '마저', '보다', '처럼', '같이', '마다', '마냥',
+    
+    # 어미 (일반적인 것들)
+    '다', '습니다', '어요', '아요', '에요', '이에요', '예요', '죠', '지요', '네요', '어요', '아요',
+    
+    # 접속사/부사
+    '그리고', '그런데', '하지만', '그러나', '또한', '또는', '혹은', '즉', '다만', '단지', '오직',
+    '비록', '설령', '가령', '만약', '만일', '아마', '정말', '참', '너무', '아주', '매우', '상당히',
+    
+    # 대명사
+    '이', '그', '저', '이것', '그것', '저것', '여기', '거기', '저기', '이곳', '그곳', '저곳',
+    '누구', '무엇', '언제', '어디', '어떻게', '왜', '어느', '어떤',
+    
+    # 일반 불용어
+    '등', '및', '또는', '즉', '단', '다만', '때문에', '위해', '위한', '대한', '관한', '통해', '따라', 
+    '의해', '에서', '에게', '으로', '로서', '로써', '라고', '이라고', '한다', '된다', '있다', '없다',
+    '같다', '다르다', '크다', '작다', '많다', '적다', '좋다', '나쁘다', '높다', '낮다',
+    
+    # 숫자 및 기타
+    '첫', '둘', '셋', '넷', '다섯', '여섯', '일곱', '여덟', '아홉', '열', '하나', '둘', '셋',
+    '년', '월', '일', '시', '분', '초', '번째', '개', '명', '회', '차례', '정도', '약간', '조금',
+    
+    # 감탄사 및 기타
+    '아', '어', '오', '음', '으음', '에', '어머', '아이고', '이런', '저런', '그런', '이렇게', '저렇게', '그렇게'
+]
+
+# 영어와 한국어 불용어를 결합한 전체 불용어 리스트
+COMBINED_STOP_WORDS = None  # 런타임에 생성됨
 
 # ====== Modular RAG 설정 ======
 MAX_ITERATIONS = 5

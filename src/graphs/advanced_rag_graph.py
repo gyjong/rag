@@ -127,9 +127,10 @@ def compress_context_node(state: AdvancedRagState):
     original_length = sum(len(doc.page_content) for doc in state["reranked_docs"])
     logger.info(f"🗜️ COMPRESSION DEBUG - Advanced RAG")
     logger.info(f"   ├─ Input docs: {len(state['reranked_docs'])}")
+    logger.info(f"   ├─ Query: '{state['query']}'")
     logger.info(f"   └─ Original context length: {original_length} chars")
     
-    result = advanced_rag_utils.compress_context(state["reranked_docs"])
+    result = advanced_rag_utils.compress_context(state["reranked_docs"], state["query"])
     compressed_length = len(result["compressed_context"])
     
     logger.info(f"📉 Compression Results:")
