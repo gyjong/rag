@@ -21,7 +21,6 @@ from src.utils.embeddings import EmbeddingManager
 from src.utils.vector_store import VectorStoreManager
 from src.utils.llm_manager import LLMManager
 from src.utils.font_utils import inject_custom_font
-# from src.rag_systems.naive_rag import NaiveRAG # No longer needed
 from src.ui.comparison_ui import ComparisonUI
 from src.ui.about_ui import AboutUI
 from src.ui.document_loading_ui import DocumentLoadingUI

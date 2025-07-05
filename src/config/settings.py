@@ -8,6 +8,10 @@ from dotenv import load_dotenv
 # .env 파일 로드
 load_dotenv()
 
+# HuggingFace tokenizers 경고 제거
+# RAGAS 평가 시 멀티프로세싱 관련 경고를 방지
+os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
+
 # 프로젝트 루트 디렉토리
 PROJECT_ROOT = Path(__file__).parent.parent.parent
 
@@ -170,6 +174,116 @@ COMBINED_STOP_WORDS = None  # 런타임에 생성됨
 # ====== Modular RAG 설정 ======
 MAX_ITERATIONS = 5
 CONFIDENCE_THRESHOLD = 0.7
+
+# Modular RAG 쿼리 확장용 키워드 맵
+MODULAR_RAG_KEYWORDS_MAP = {
+    # Technology & AI
+    "AI": ["artificial intelligence", "machine learning", "deep learning", "neural networks", "automation"],
+    "인공지능": ["AI", "머신러닝", "딥러닝", "신경망", "자동화"],
+    "머신러닝": ["machine learning", "ML", "AI", "인공지능", "데이터 분석"],
+    "딥러닝": ["deep learning", "neural networks", "AI", "머신러닝"],
+    
+    # Business & Trends
+    "트렌드": ["동향", "전망", "추세", "방향성", "미래"],
+    "동향": ["trend", "트렌드", "전망", "추세", "방향성"],
+    "전망": ["outlook", "forecast", "예측", "미래", "트렌드"],
+    "시장": ["market", "business", "산업", "경제", "상업"],
+    
+    # Time & Future
+    "미래": ["future", "전망", "향후", "앞으로", "다가올"],
+    "2025년": ["2025", "올해", "현재", "최신", "최근"],
+    "올해": ["2025", "현재", "최신", "최근", "이번년도"],
+    
+    # Work & Productivity
+    "업무": ["work", "business", "직무", "일", "업무환경"],
+    "생산성": ["productivity", "efficiency", "효율성", "성과", "업무효율"],
+    "직장": ["workplace", "office", "회사", "직장환경", "업무환경"],
+    
+    # Industry & Sectors
+    "기업": ["company", "corporation", "business", "회사", "기업환경"],
+    "산업": ["industry", "sector", "분야", "업계", "산업계"],
+    "스타트업": ["startup", "신생기업", "벤처", "창업", "신규기업"],
+    
+    # Digital & Technology
+    "디지털": ["digital", "온라인", "전자", "정보기술", "IT"],
+    "온라인": ["online", "인터넷", "웹", "디지털", "가상"],
+    "모바일": ["mobile", "스마트폰", "앱", "휴대용", "이동"],
+    
+    # Data & Analytics
+    "데이터": ["data", "정보", "분석", "통계", "인사이트"],
+    "분석": ["analysis", "analytics", "데이터분석", "통계", "연구"],
+    "통계": ["statistics", "데이터", "수치", "분석", "조사"],
+    
+    # Innovation & Development
+    "혁신": ["innovation", "창의성", "새로운", "발전", "개선"],
+    "개발": ["development", "연구", "개발", "기술개발", "제품개발"],
+    "연구": ["research", "조사", "분석", "개발", "탐구"],
+    
+    # Communication & Collaboration
+    "소통": ["communication", "의사소통", "대화", "협업", "팀워크"],
+    "협업": ["collaboration", "팀워크", "협력", "공동작업", "소통"],
+    "회의": ["meeting", "컨퍼런스", "토론", "협의", "소통"],
+    
+    # Skills & Learning
+    "기술": ["skill", "능력", "전문성", "역량", "실력"],
+    "학습": ["learning", "교육", "훈련", "개발", "성장"],
+    "교육": ["education", "학습", "훈련", "강의", "교육과정"],
+    
+    # Environment & Culture
+    "환경": ["environment", "상황", "조건", "분위기", "문화"],
+    "문화": ["culture", "전통", "가치관", "습관", "환경"],
+    "변화": ["change", "변화", "전환", "발전", "혁신"],
+    
+    # Policy & Government
+    "정책": ["policy", "정책방향", "공공정책", "제도", "방안"],
+    "정부": ["government", "행정", "국가", "공공", "정부기관"],
+    "국가": ["nation", "정부", "국가적", "전국", "국정"],
+    
+    # Manufacturing & Industry
+    "제조": ["manufacturing", "생산", "공장", "제조업", "산업"],
+    "생산": ["production", "제조", "생산성", "제품", "공정"],
+    "공장": ["factory", "제조", "생산", "설비", "시설"],
+    
+    # Economic & Financial
+    "경제": ["economy", "경제성", "금융", "재정", "투자"],
+    "투자": ["investment", "자금", "투자금", "재원", "자본"],
+    "비용": ["cost", "가격", "경비", "지출", "예산"],
+    
+    # Safety & Security
+    "안전": ["safety", "보안", "안전성", "위험", "안전장치"],
+    "보안": ["security", "안전", "보호", "방어", "보안체계"],
+    "위험": ["risk", "안전", "위험성", "리스크", "위험요소"],
+    
+    # Quality & Performance
+    "품질": ["quality", "성능", "수준", "품질관리", "우수성"],
+    "성능": ["performance", "효율", "능력", "성과", "품질"],
+    "효율": ["efficiency", "효율성", "생산성", "성능", "최적화"],
+    
+    # Global & International
+    "글로벌": ["global", "국제", "세계", "해외", "국제적"],
+    "국제": ["international", "글로벌", "해외", "세계", "국제적"],
+    "해외": ["overseas", "국외", "외국", "국제", "글로벌"],
+    
+    # Time & Temporal
+    "현재": ["current", "지금", "현재", "최근", "현시점"],
+    "최근": ["recent", "최신", "현재", "요즘", "근래"],
+    "향후": ["future", "앞으로", "미래", "장래", "이후"],
+    
+    # Social & Human
+    "사회": ["society", "사회적", "사람", "커뮤니티", "사회성"],
+    "사람": ["people", "인간", "개인", "사용자", "고객"],
+    "고객": ["customer", "사용자", "클라이언트", "소비자", "이용자"],
+    
+    # System & Process
+    "시스템": ["system", "체계", "구조", "시스템", "프로세스"],
+    "프로세스": ["process", "과정", "절차", "방법", "단계"],
+    "방법": ["method", "방식", "접근법", "기법", "수단"],
+    
+    # Standard & Regulation
+    "표준": ["standard", "기준", "규격", "표준화", "규정"],
+    "규정": ["regulation", "규칙", "법규", "기준", "표준"],
+    "기준": ["criteria", "표준", "척도", "지표", "기준점"]
+}
 
 # Streamlit 설정
 PAGE_TITLE = "RAG 비교 실험 플랫폼"

@@ -9,7 +9,7 @@ from enum import Enum
 
 from ..utils.vector_store import VectorStoreManager
 from ..utils.llm_manager import LLMManager
-from ..config.settings import CONFIDENCE_THRESHOLD
+from ..config.settings import CONFIDENCE_THRESHOLD, MODULAR_RAG_KEYWORDS_MAP
 
 logger = logging.getLogger(__name__)
 
@@ -91,65 +91,10 @@ class ModuleType(Enum):
 
 # --- Pre-retrieval Modules ---
 def expand_query(query: str) -> Dict[str, Any]:
-    """Expand query with related terms."""
-    keywords_map = {
-        # Technology & AI
-        "AI": ["artificial intelligence", "machine learning", "deep learning", "neural networks", "automation"],
-        "인공지능": ["AI", "머신러닝", "딥러닝", "신경망", "자동화"],
-        "머신러닝": ["machine learning", "ML", "AI", "인공지능", "데이터 분석"],
-        "딥러닝": ["deep learning", "neural networks", "AI", "머신러닝"],
-        
-        # Business & Trends
-        "트렌드": ["동향", "전망", "추세", "방향성", "미래"],
-        "동향": ["trend", "트렌드", "전망", "추세", "방향성"],
-        "전망": ["outlook", "forecast", "예측", "미래", "트렌드"],
-        "시장": ["market", "business", "산업", "경제", "상업"],
-        
-        # Time & Future
-        "미래": ["future", "전망", "향후", "앞으로", "다가올"],
-        "2025년": ["2025", "올해", "현재", "최신", "최근"],
-        "올해": ["2025", "현재", "최신", "최근", "이번년도"],
-        
-        # Work & Productivity
-        "업무": ["work", "business", "직무", "일", "업무환경"],
-        "생산성": ["productivity", "efficiency", "효율성", "성과", "업무효율"],
-        "직장": ["workplace", "office", "회사", "직장환경", "업무환경"],
-        
-        # Industry & Sectors
-        "기업": ["company", "corporation", "business", "회사", "기업환경"],
-        "산업": ["industry", "sector", "분야", "업계", "산업계"],
-        "스타트업": ["startup", "신생기업", "벤처", "창업", "신규기업"],
-        
-        # Digital & Technology
-        "디지털": ["digital", "온라인", "전자", "정보기술", "IT"],
-        "온라인": ["online", "인터넷", "웹", "디지털", "가상"],
-        "모바일": ["mobile", "스마트폰", "앱", "휴대용", "이동"],
-        
-        # Data & Analytics
-        "데이터": ["data", "정보", "분석", "통계", "인사이트"],
-        "분석": ["analysis", "analytics", "데이터분석", "통계", "연구"],
-        "통계": ["statistics", "데이터", "수치", "분석", "조사"],
-        
-        # Innovation & Development
-        "혁신": ["innovation", "창의성", "새로운", "발전", "개선"],
-        "개발": ["development", "연구", "개발", "기술개발", "제품개발"],
-        "연구": ["research", "조사", "분석", "개발", "탐구"],
-        
-        # Communication & Collaboration
-        "소통": ["communication", "의사소통", "대화", "협업", "팀워크"],
-        "협업": ["collaboration", "팀워크", "협력", "공동작업", "소통"],
-        "회의": ["meeting", "컨퍼런스", "토론", "협의", "소통"],
-        
-        # Skills & Learning
-        "기술": ["skill", "능력", "전문성", "역량", "실력"],
-        "학습": ["learning", "교육", "훈련", "개발", "성장"],
-        "교육": ["education", "학습", "훈련", "강의", "교육과정"],
-        
-        # Environment & Culture
-        "환경": ["environment", "상황", "조건", "분위기", "문화"],
-        "문화": ["culture", "전통", "가치관", "습관", "환경"],
-        "변화": ["change", "변화", "전환", "발전", "혁신"]
-    }
+    """Expand query with related terms using keywords map from settings."""
+    # Use the centralized keywords map from settings
+    keywords_map = MODULAR_RAG_KEYWORDS_MAP
+    
     expanded_terms = []
     for keyword, expansions in keywords_map.items():
         if keyword.lower() in query.lower():
