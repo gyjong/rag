@@ -91,11 +91,11 @@ def initialize_session_state():
 def setup_page():
     """Setup page configuration."""
     st.set_page_config(
-        page_title=APP_TITLE,
-        page_icon="🤖",
-        layout="wide",
-        initial_sidebar_state="expanded"
-    )
+    page_title=PAGE_TITLE,
+    page_icon=PAGE_ICON,
+    layout=LAYOUT,
+    initial_sidebar_state="expanded"
+)
 
     # Apply custom font globally first
     inject_custom_font("fonts/Paperlogy.ttf")

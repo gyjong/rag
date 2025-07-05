@@ -71,7 +71,7 @@ QUERY_EXPANSION_COUNT = 5
 
 # ====== Modular RAG 설정 ======
 MAX_ITERATIONS = 5
-CONFIDENCE_THRESHOLD = 0.9
+CONFIDENCE_THRESHOLD = 0.7
 
 # Streamlit 설정
 PAGE_TITLE = "RAG 비교 실험 플랫폼"

@@ -265,16 +265,33 @@ def estimate_confidence(llm_manager: LLMManager, answer: str, docs: List[Documen
     """
     Estimate confidence by checking for uncertainty and factual consistency (groundedness).
     """
+    logger.info("🔍 === CONFIDENCE CALCULATION DEBUG ===")
+    
     # 1. Base score from query classification and answer length
-    confidence = 0.3 + (classification_confidence * 0.1)
-    if len(answer) > 50:
-        confidence += 0.1
+    base_score = 0.3
+    classification_bonus = classification_confidence * 0.1
+    length_bonus = 0.1 if len(answer) > 50 else 0.0
+    
+    confidence = base_score + classification_bonus + length_bonus
+    
+    logger.info(f"📊 Base Score Calculation:")
+    logger.info(f"   ├─ Base score: {base_score}")
+    logger.info(f"   ├─ Classification confidence: {classification_confidence:.3f} → bonus: {classification_bonus:.3f}")
+    logger.info(f"   ├─ Answer length: {len(answer)} chars → bonus: {length_bonus}")
+    logger.info(f"   └─ Subtotal: {confidence:.3f}")
 
     # 2. Penalize for uncertainty keywords
-    uncertainty_penalty = 0.0
-    if any(word in answer.lower() for word in ["모른다", "확실하지", "아마도", "같습니다"]):
-        uncertainty_penalty = 0.3
+    uncertainty_keywords = ["모른다", "확실하지", "아마도"]
+    found_uncertainty_words = [word for word in uncertainty_keywords if word in answer.lower()]
+    uncertainty_penalty = 0.3 if found_uncertainty_words else 0.0
+    
     confidence -= uncertainty_penalty
+    
+    logger.info(f"🚫 Uncertainty Penalty:")
+    logger.info(f"   ├─ Found uncertainty words: {found_uncertainty_words}")
+    logger.info(f"   ├─ Penalty: -{uncertainty_penalty}")
+    logger.info(f"   ├─ Answer preview: '{answer[:100]}{'...' if len(answer) > 100 else ''}'")
+    logger.info(f"   └─ After penalty: {confidence:.3f}")
 
     # 3. Check for factual consistency using an LLM call
     faithfulness_bonus = 0.0
@@ -307,10 +324,25 @@ def estimate_confidence(llm_manager: LLMManager, answer: str, docs: List[Documen
         except Exception as e:
             logger.error(f"Faithfulness check failed: {e}")
             faithfulness_bonus = -0.1 # Small penalty if check fails
+    else:
+        logger.info("No documents available for faithfulness check")
 
     confidence += faithfulness_bonus
+    final_confidence = max(0.0, min(1.0, confidence))
     
-    return max(0.0, min(1.0, confidence))
+    logger.info(f"✅ Faithfulness Check:")
+    logger.info(f"   ├─ Documents available: {len(docs) if docs else 0}")
+    logger.info(f"   ├─ Faithfulness bonus/penalty: {faithfulness_bonus:+.3f}")
+    logger.info(f"   └─ After faithfulness: {confidence:.3f}")
+    
+    logger.info(f"🎯 Final Confidence Calculation:")
+    logger.info(f"   ├─ Before clamping: {confidence:.3f}")
+    logger.info(f"   ├─ After clamping [0.0, 1.0]: {final_confidence:.3f}")
+    logger.info(f"   └─ Formula: 0.3 + ({classification_confidence:.3f}*0.1) + {length_bonus} - {uncertainty_penalty} + {faithfulness_bonus:+.3f} = {final_confidence:.3f}")
+    
+    logger.info("🔍 === END CONFIDENCE DEBUG ===")
+    
+    return final_confidence
 
 # --- Orchestration Modules ---
 def check_iteration_stop(confidence: float, iteration: int, max_iterations: int) -> bool:

@@ -137,10 +137,8 @@ poetry.lock
 temp_vector_store/
 logs/ 
 
-
 # models
 models/
-
 
 # json data
 json_data/
